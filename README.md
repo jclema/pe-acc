@@ -14,6 +14,21 @@ El foco actual no es “cubrir todo”, sino demostrar valor con un MVP funciona
 - Enlaza sanciones desde `OSCE` y listados judiciales
 - Expone API pública y frontend local para exploración
 
+## Demo actual
+
+Hoy el prototipo ya permite revisar un subconjunto real del grafo peruano:
+
+- `SUNAT / RUC`: carga parcial para identidad de proveedores
+- `OSCE + inhabilitaciones judiciales`: cargadas y enlazadas al grafo
+- `HAS_SANCTION`: `9,137` relaciones verificadas en Neo4j
+- frontend local operativo en `http://localhost:3000`
+
+Ejemplo validado en la UI:
+
+- `CONSTRUCTORA DOS DE MAYO S.A.` por `RUC 20100994128`
+
+Estado de fuentes: [docs/source_registry_pe_v1.csv](/Users/juancamilo/Documents/pe-acc/docs/source_registry_pe_v1.csv)
+
 ## En qué se diferencia del upstream
 
 - Reorienta el dominio de Brasil a Perú
@@ -28,8 +43,6 @@ El foco actual no es “cubrir todo”, sino demostrar valor con un MVP funciona
 - `inhabilitaciones judiciales`
 - `SEACE / CONOSCE`
 - `MEF` como capa posterior de contexto presupuestal
-
-Estado de fuentes: [docs/source_registry_pe_v1.csv](/Users/juancamilo/Documents/pe-acc/docs/source_registry_pe_v1.csv)
 
 ## Quick Start
 
@@ -72,6 +85,26 @@ El proyecto ya incluye la estructura para trabajar con fuentes peruanas:
 4. Incorporar `SEACE / CONOSCE`.
 5. Añadir `MEF` cuando el núcleo de contratación ya esté estable.
 
+## Roadmap
+
+### Now
+
+- consolidar `SUNAT + OSCE` como base real del grafo
+- terminar ingestión útil de `SEACE / CONOSCE`
+- mejorar la experiencia de búsqueda y ficha de proveedor
+
+### Next
+
+- cruzar `Provider -> Process/Award -> Entity`
+- incorporar contexto presupuestal del `MEF`
+- optimizar cargas grandes a Neo4j
+
+### Later
+
+- despliegue público estable
+- capa de conflictos de interés y declaraciones
+- mayor cobertura y actualización automatizada de fuentes
+
 ## Estado actual
 
 - `pe_sunat_ruc`: implementado
@@ -107,10 +140,10 @@ data/       datos raw, normalizados y demo
 
 ## Próximos pasos
 
-- Cerrar pipeline real de `SEACE / CONOSCE`
-- Mejorar carga masiva a Neo4j para conjuntos grandes
-- Preparar despliegue público controlado
-- Incorporar contexto presupuestal del `MEF`
+- cerrar pipeline real de `SEACE / CONOSCE`
+- mejorar carga masiva a Neo4j para conjuntos grandes
+- preparar despliegue público controlado
+- incorporar contexto presupuestal del `MEF`
 
 ## Créditos
 
