@@ -2,7 +2,7 @@
 
 **Grafo abierto de integridad pública para Perú.**
 
-PE-ACC es un fork de [`br-acc`](https://github.com/brunoclz/br-acc) orientado a Perú. Su objetivo es cruzar datos públicos de proveedores, sanciones, procesos de contratación y contexto presupuestal para apoyar vigilancia cívica, periodismo e investigación de interés público.
+PE-ACC es un fork de [`br-acc`](https://github.com/enioxt/br-acc) orientado a Perú. Su objetivo es cruzar datos públicos de proveedores, sanciones, procesos de contratación y contexto presupuestal para apoyar vigilancia cívica, periodismo e investigación de interés público.
 
 El foco actual no es “cubrir todo”, sino demostrar valor con un MVP funcional y trazable.
 
@@ -53,6 +53,12 @@ cp .env.example .env
 docker compose up -d
 ```
 
+Ver estado del stack:
+
+```bash
+docker compose ps
+```
+
 Levantar demo Perú con ETL:
 
 ```bash
@@ -76,6 +82,28 @@ El proyecto ya incluye la estructura para trabajar con fuentes peruanas:
 - [etl/src/bracc_etl/pipelines/pe_sunat_ruc.py](/Users/juancamilo/Documents/pe-acc/etl/src/bracc_etl/pipelines/pe_sunat_ruc.py)
 - [etl/src/bracc_etl/pipelines/pe_osce_sanctions.py](/Users/juancamilo/Documents/pe-acc/etl/src/bracc_etl/pipelines/pe_osce_sanctions.py)
 - [etl/src/bracc_etl/pipelines/pe_seace_conosce.py](/Users/juancamilo/Documents/pe-acc/etl/src/bracc_etl/pipelines/pe_seace_conosce.py)
+
+## Operación local
+
+- El stack activo de desarrollo usa [docker-compose.yml](/Users/juancamilo/Documents/pe-acc/docker-compose.yml) en la raíz del repo.
+- [infra/docker-compose.yml](/Users/juancamilo/Documents/pe-acc/infra/docker-compose.yml) existe como variante de infraestructura, pero el flujo normal local usa el compose de raíz.
+- Los puertos del stack local quedaron ligados a `127.0.0.1` para reducir exposición accidental:
+  - `127.0.0.1:3000` frontend
+  - `127.0.0.1:8000` API
+  - `127.0.0.1:7474` Neo4j Browser
+  - `127.0.0.1:7687` Neo4j Bolt
+- `api`, `frontend` y `neo4j` usan `healthchecks` y `restart: unless-stopped`.
+- La API ahora reintenta la conexión a Neo4j en el arranque, lo que vuelve más estable el flujo `docker compose up -d`.
+
+Comandos útiles:
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f api
+docker compose logs -f frontend
+docker compose logs -f neo4j
+```
 
 ## Flujo recomendado del MVP
 
@@ -138,6 +166,30 @@ docs/       documentación y registro de fuentes
 data/       datos raw, normalizados y demo
 ```
 
+## Cómo aportar
+
+Hay varias formas de contribuir sin meterse de frente a toda la arquitectura:
+
+- `Datos`: agregar muestras reales o documentadas de `SEACE / CONOSCE`, `MEF` u otras fuentes públicas peruanas.
+- `ETL`: mejorar normalización, joins por `RUC` y rendimiento de carga hacia Neo4j.
+- `Frontend`: pulir búsqueda, ficha de proveedor, trazabilidad visible y branding Perú.
+- `API`: ampliar endpoints públicos para consultas cívicas útiles sin exponer datos sensibles.
+- `Documentación`: registrar cobertura, huecos, licencias y limitaciones por fuente en [docs/source_registry_pe_v1.csv](/Users/juancamilo/Documents/pe-acc/docs/source_registry_pe_v1.csv).
+
+Antes de abrir cambios grandes, conviene mantener este criterio:
+
+- priorizar valor visible para Perú
+- no bloquear el MVP por complejidad interna
+- mantener trazabilidad clara por fuente
+- evitar conclusiones acusatorias o rankings
+
+Si vas a trabajar con datos nuevos:
+
+1. deja el archivo original en `data/raw/pe/...`
+2. documenta la fuente y fecha de corte
+3. normaliza hacia `data/normalized/pe/...`
+4. valida que el join principal quede visible en Neo4j o en la UI
+
 ## Próximos pasos
 
 - cerrar pipeline real de `SEACE / CONOSCE`
@@ -147,7 +199,7 @@ data/       datos raw, normalizados y demo
 
 ## Créditos
 
-Este proyecto parte del trabajo original de [`br-acc`](https://github.com/brunoclz/br-acc) y lo adapta al contexto peruano.
+Este proyecto parte del trabajo original de [`br-acc`](https://github.com/enioxt/br-acc) y lo adapta al contexto peruano.
 
 ## Licencia
 
