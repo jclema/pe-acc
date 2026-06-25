@@ -133,6 +133,64 @@ docker compose logs -f neo4j
 - capa de conflictos de interés y declaraciones
 - mayor cobertura y actualización automatizada de fuentes
 
+## Adopción selectiva desde `br-acc`
+
+No buscamos copiar el upstream completo. La idea es portar solo lo que aumente valor real para Perú sin meter complejidad prematura.
+
+### Fase 1. Utilidad cívica inmediata
+
+- `landing orientada a búsqueda`
+  Para que la home sirva como punto de entrada real a periodistas, OSC e investigadores.
+- `source registry` visible
+  Para mostrar qué fuentes peruanas existen, cuáles están cargadas y cuáles siguen parciales.
+- `meta` más clara
+  Para exponer salud del sistema, cobertura, fecha de corte y estado de fuentes.
+
+Prerequisitos:
+
+- `SUNAT + OSCE` ya funcionales
+- estructura de [docs/source_registry_pe_v1.csv](/Users/juancamilo/Documents/pe-acc/docs/source_registry_pe_v1.csv) mantenida al día
+
+### Fase 2. Operación y trazabilidad
+
+- `progreso ETL` visible
+  Para que quien contribuya pueda entender qué está cargando y qué se rompió.
+- `observabilidad básica`
+  Logs más claros, healthchecks mejores y estado del stack más transparente.
+- `cache` cuando haga falta
+  Útil cuando el proyecto se publique y necesitemos respuestas más rápidas en búsqueda y metadatos.
+
+Prerequisitos:
+
+- cargas reales más frecuentes
+- mayor volumen de datos de `SUNAT` y `SEACE / CONOSCE`
+
+### Fase 3. Analítica pública avanzada
+
+- `reportes` o vistas demostrativas
+  Casos concretos como proveedores sancionados, concentración en entidades o cruces contratación-presupuesto.
+- `patrones investigativos`
+  Solo cuando los joins principales sean confiables y explicables.
+
+Prerequisitos:
+
+- `Provider -> Process/Award -> Entity`
+- primera integración útil de `MEF`
+- criterio claro de trazabilidad y límites interpretativos
+
+### Qué no es prioridad por ahora
+
+- chatbot AI
+- monitor OSINT amplio
+- activity feeds complejos
+- journeys o módulos de producto muy acoplados al upstream
+- infraestructura completa del ecosistema `EGOS`
+
+Regla práctica:
+
+- adoptar primero lo que mejore `búsqueda`, `trazabilidad`, `cobertura visible` y `operación`
+- diferir lo que requiera demasiada complejidad sin mejorar todavía el valor visible para Perú
+
 ## Estado actual
 
 - `pe_sunat_ruc`: implementado
@@ -189,6 +247,13 @@ Si vas a trabajar con datos nuevos:
 2. documenta la fuente y fecha de corte
 3. normaliza hacia `data/normalized/pe/...`
 4. valida que el join principal quede visible en Neo4j o en la UI
+
+Si vas a portar ideas desde el upstream:
+
+1. explica qué problema resuelve en el contexto peruano
+2. define si aporta a `Fase 1`, `Fase 2` o `Fase 3`
+3. evita traer módulos completos si solo necesitamos una parte
+4. prioriza piezas reutilizables sobre features acopladas al caso Brasil
 
 ## Próximos pasos
 
