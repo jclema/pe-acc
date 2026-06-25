@@ -60,19 +60,19 @@ describe("Register", () => {
   it("renders registration form with all fields", () => {
     renderRegister();
 
-    expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^senha$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/correo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^contraseña$/i)).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/confirmar senha/i),
+      screen.getByLabelText(/confirmar contraseña/i),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/c\u00F3digo de convite/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/c\u00F3digo de invitación/i)).toBeInTheDocument();
   });
 
   it("shows email and password inputs with correct types", () => {
     renderRegister();
 
-    const emailInput = screen.getByLabelText(/e-mail/i);
-    const passwordInput = screen.getByLabelText(/^senha$/i);
+    const emailInput = screen.getByLabelText(/correo/i);
+    const passwordInput = screen.getByLabelText(/^contraseña$/i);
 
     expect(emailInput).toHaveAttribute("type", "email");
     expect(passwordInput).toHaveAttribute("type", "password");
@@ -82,16 +82,16 @@ describe("Register", () => {
     const user = userEvent.setup();
     renderRegister();
 
-    const submitBtn = screen.getByRole("button", { name: /registrar/i });
+    const submitBtn = screen.getByRole("button", { name: /registrarse/i });
     expect(submitBtn).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(/e-mail/i), "test@example.com");
-    await user.type(screen.getByLabelText(/^senha$/i), "password123");
+    await user.type(screen.getByLabelText(/correo/i), "test@example.com");
+    await user.type(screen.getByLabelText(/^contraseña$/i), "password123");
     await user.type(
-      screen.getByLabelText(/confirmar senha/i),
+      screen.getByLabelText(/confirmar contraseña/i),
       "password123",
     );
-    await user.type(screen.getByLabelText(/c\u00F3digo de convite/i), "INV-123");
+    await user.type(screen.getByLabelText(/c\u00F3digo de invitación/i), "INV-123");
     await user.click(submitBtn);
 
     expect(mockRegister).toHaveBeenCalledWith(
@@ -105,11 +105,11 @@ describe("Register", () => {
     const user = userEvent.setup();
     renderRegister();
 
-    await user.click(screen.getByRole("button", { name: /registrar/i }));
+    await user.click(screen.getByRole("button", { name: /registrarse/i }));
 
     expect(mockRegister).not.toHaveBeenCalled();
     expect(
-      screen.getByText(/e-mail é obrigatório/i),
+      screen.getByText(/el correo es obligatorio/i),
     ).toBeInTheDocument();
   });
 
@@ -117,20 +117,20 @@ describe("Register", () => {
     mockStoreState.error = "auth.invalidInvite";
     renderRegister();
 
-    expect(screen.getByText(/c\u00F3digo de convite inv\u00E1lido/i)).toBeInTheDocument();
+    expect(screen.getByText(/c\u00F3digo de invitación inválido/i)).toBeInTheDocument();
   });
 
   it("disables submit button during loading", () => {
     mockStoreState.loading = true;
     renderRegister();
 
-    const submitBtn = screen.getByRole("button", { name: /carregando/i });
+    const submitBtn = screen.getByRole("button", { name: /cargando/i });
     expect(submitBtn).toBeDisabled();
   });
 
   it("has link to login page", () => {
     renderRegister();
-    const link = screen.getByText(/j\u00E1 tem conta\? entre/i);
+    const link = screen.getByText(/¿ya tienes cuenta\? ingresa/i);
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/login");
   });

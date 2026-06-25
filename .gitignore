@@ -50,6 +50,7 @@ htmlcov/
 # Data files (too large for git)
 *.csv
 !docs/source_registry_br_v1.csv
+!docs/source_registry_pe_v1.csv
 !docs/release/public_boundary_matrix.csv
 *.tsv
 *.parquet
@@ -57,6 +58,7 @@ htmlcov/
 *.zip
 *.gz
 !etl/tests/fixtures/**/*.csv
+!data/demo/**/*.csv
 
 # CNPJ data directories (keep .gitkeep only)
 data/cnpj/raw/*

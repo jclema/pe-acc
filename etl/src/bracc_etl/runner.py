@@ -30,6 +30,9 @@ from bracc_etl.pipelines.mides import MidesPipeline
 from bracc_etl.pipelines.ofac import OfacPipeline
 from bracc_etl.pipelines.opensanctions import OpenSanctionsPipeline
 from bracc_etl.pipelines.pep_cgu import PepCguPipeline
+from bracc_etl.pipelines.pe_osce_sanctions import PeOsceSanctionsPipeline
+from bracc_etl.pipelines.pe_seace_conosce import PeSeaceConoscePipeline
+from bracc_etl.pipelines.pe_sunat_ruc import PeSunatRucPipeline
 from bracc_etl.pipelines.pgfn import PgfnPipeline
 from bracc_etl.pipelines.pncp import PncpPipeline
 from bracc_etl.pipelines.querido_diario import QueridoDiarioPipeline
@@ -59,6 +62,9 @@ PIPELINES: dict[str, type] = {
     "transparencia": TransparenciaPipeline,
     "sanctions": SanctionsPipeline,
     "pep_cgu": PepCguPipeline,
+    "pe_osce_sanctions": PeOsceSanctionsPipeline,
+    "pe_seace_conosce": PeSeaceConoscePipeline,
+    "pe_sunat_ruc": PeSunatRucPipeline,
     "bndes": BndesPipeline,
     "pgfn": PgfnPipeline,
     "ibama": IbamaPipeline,

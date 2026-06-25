@@ -54,19 +54,19 @@ interface SourceDef {
 }
 
 const DATA_SOURCES: SourceDef[] = [
-  { nameKey: "CNPJ", descKey: "landing.sources.cnpj", countFn: (s) => s.company_count },
-  { nameKey: "TSE", descKey: "landing.sources.tse", countFn: (s) => s.person_count },
-  { nameKey: "Transparência", descKey: "landing.sources.transparencia", countFn: (s) => s.contract_count },
-  { nameKey: "CEIS/CNEP", descKey: "landing.sources.sanctions", countFn: (s) => s.sanction_count },
-  { nameKey: "DATASUS", descKey: "landing.sources.cnes", countFn: (s) => s.health_count },
-  { nameKey: "BNDES", descKey: "landing.sources.bndes", countFn: (s) => s.finance_count },
-  { nameKey: "PGFN", descKey: "landing.sources.pgfn", countFn: () => null },
-  { nameKey: "IBAMA", descKey: "landing.sources.ibama", countFn: (s) => s.embargo_count },
-  { nameKey: "ComprasNet", descKey: "landing.sources.comprasnet", countFn: () => null },
-  { nameKey: "TCU", descKey: "landing.sources.tcu", countFn: () => null },
-  { nameKey: "TransfereGov", descKey: "landing.sources.transferegov", countFn: (s) => s.amendment_count },
-  { nameKey: "RAIS", descKey: "landing.sources.rais", countFn: (s) => s.laborstats_count },
-  { nameKey: "INEP", descKey: "landing.sources.inep", countFn: (s) => s.education_count },
+  { nameKey: "RUC", descKey: "landing.sources.cnpj", countFn: (s) => s.company_count },
+  { nameKey: "SEACE", descKey: "landing.sources.tse", countFn: (s) => s.person_count },
+  { nameKey: "Transparencia", descKey: "landing.sources.transparencia", countFn: (s) => s.contract_count },
+  { nameKey: "OSCE", descKey: "landing.sources.sanctions", countFn: (s) => s.sanction_count },
+  { nameKey: "MEF", descKey: "landing.sources.cnes", countFn: (s) => s.health_count },
+  { nameKey: "PCM", descKey: "landing.sources.bndes", countFn: (s) => s.finance_count },
+  { nameKey: "SUNAT", descKey: "landing.sources.pgfn", countFn: () => null },
+  { nameKey: "Contraloria", descKey: "landing.sources.ibama", countFn: (s) => s.embargo_count },
+  { nameKey: "Datos Abiertos", descKey: "landing.sources.comprasnet", countFn: () => null },
+  { nameKey: "Gob.pe", descKey: "landing.sources.tcu", countFn: () => null },
+  { nameKey: "SEACE Historico", descKey: "landing.sources.transferegov", countFn: (s) => s.amendment_count },
+  { nameKey: "OSCE Sanciones", descKey: "landing.sources.rais", countFn: (s) => s.laborstats_count },
+  { nameKey: "Ejecucion", descKey: "landing.sources.inep", countFn: (s) => s.education_count },
 ];
 
 interface FeatureDef {

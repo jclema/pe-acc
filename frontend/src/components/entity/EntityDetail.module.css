@@ -79,6 +79,19 @@
   font-family: var(--font-mono);
 }
 
+.section {
+  margin-bottom: var(--space-md);
+}
+
+.sectionTitle {
+  display: block;
+  margin-bottom: var(--space-xs);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .properties {
   display: flex;
   flex-direction: column;

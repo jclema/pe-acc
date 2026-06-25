@@ -2,6 +2,21 @@
 // Applied on database initialization
 
 // ── Uniqueness Constraints ──────────────────────────────
+CREATE CONSTRAINT provider_ruc_unique IF NOT EXISTS
+  FOR (p:Provider) REQUIRE p.ruc IS UNIQUE;
+
+CREATE CONSTRAINT contracting_entity_id_unique IF NOT EXISTS
+  FOR (e:Entity) REQUIRE e.entity_id IS UNIQUE;
+
+CREATE CONSTRAINT procurement_process_id_unique IF NOT EXISTS
+  FOR (p:ProcurementProcess) REQUIRE p.process_id IS UNIQUE;
+
+CREATE CONSTRAINT procurement_award_id_unique IF NOT EXISTS
+  FOR (a:Award) REQUIRE a.award_id IS UNIQUE;
+
+CREATE CONSTRAINT budget_execution_id_unique IF NOT EXISTS
+  FOR (b:BudgetExecution) REQUIRE b.execution_id IS UNIQUE;
+
 CREATE CONSTRAINT person_cpf_unique IF NOT EXISTS
   FOR (p:Person) REQUIRE p.cpf IS UNIQUE;
 
@@ -150,6 +165,30 @@ CREATE CONSTRAINT temporal_violation_id_unique IF NOT EXISTS
   FOR (t:TemporalViolation) REQUIRE t.violation_id IS UNIQUE;
 
 // ── Indexes ─────────────────────────────────────────────
+CREATE INDEX provider_legal_name IF NOT EXISTS
+  FOR (p:Provider) ON (p.legal_name);
+
+CREATE INDEX provider_trade_name IF NOT EXISTS
+  FOR (p:Provider) ON (p.trade_name);
+
+CREATE INDEX entity_name IF NOT EXISTS
+  FOR (e:Entity) ON (e.name);
+
+CREATE INDEX entity_ubigeo IF NOT EXISTS
+  FOR (e:Entity) ON (e.ubigeo);
+
+CREATE INDEX procurement_process_seace_code IF NOT EXISTS
+  FOR (p:ProcurementProcess) ON (p.seace_code);
+
+CREATE INDEX procurement_process_status IF NOT EXISTS
+  FOR (p:ProcurementProcess) ON (p.status);
+
+CREATE INDEX award_date IF NOT EXISTS
+  FOR (a:Award) ON (a.award_date);
+
+CREATE INDEX budget_execution_period IF NOT EXISTS
+  FOR (b:BudgetExecution) ON (b.period);
+
 CREATE INDEX person_name IF NOT EXISTS
   FOR (p:Person) ON (p.name);
 
@@ -477,8 +516,8 @@ CREATE INDEX bcb_penalty_date IF NOT EXISTS
 
 // ── Fulltext Search Index ───────────────────────────────
 CREATE FULLTEXT INDEX entity_search IF NOT EXISTS
-  FOR (n:Person|Partner|Company|Health|Education|Contract|Amendment|Convenio|Embargo|PublicOffice|OffshoreEntity|OffshoreOfficer|GlobalPEP|CVMProceeding|Expense|PEPRecord|Expulsion|LeniencyAgreement|GovCardExpense|GovTravel|TaxWaiver|LegalCase|DeclaredAsset|InternationalSanction|Bid|Fund|DOUAct|MunicipalFinance|PartyMembership|BarredNGO|BCBPenalty|LaborMovement|CPI|Inquiry|InquiryRequirement|InquirySession|MunicipalBid|MunicipalContract|MunicipalGazetteAct|JudicialCase|SourceDocument)
-  ON EACH [n.name, n.razao_social, n.cpf, n.cnpj, n.doc_partial, n.doc_raw, n.cnes_code, n.object, n.contracting_org, n.convenente, n.infraction, n.org, n.function, n.jurisdiction, n.penalty_type, n.description, n.institution_name, n.subject, n.text, n.topic, n.case_number, n.url];
+  FOR (n:Provider|Entity|ProcurementProcess|Award|BudgetExecution|Person|Partner|Company|Health|Education|Contract|Amendment|Convenio|Embargo|PublicOffice|OffshoreEntity|OffshoreOfficer|GlobalPEP|CVMProceeding|Expense|PEPRecord|Expulsion|LeniencyAgreement|GovCardExpense|GovTravel|TaxWaiver|LegalCase|DeclaredAsset|InternationalSanction|Bid|Fund|DOUAct|MunicipalFinance|PartyMembership|BarredNGO|BCBPenalty|LaborMovement|CPI|Inquiry|InquiryRequirement|InquirySession|MunicipalBid|MunicipalContract|MunicipalGazetteAct|JudicialCase|SourceDocument)
+  ON EACH [n.name, n.legal_name, n.trade_name, n.title, n.entity_name, n.razao_social, n.cpf, n.cnpj, n.ruc, n.entity_id, n.process_id, n.seace_code, n.doc_partial, n.doc_raw, n.cnes_code, n.object, n.contracting_org, n.convenente, n.infraction, n.org, n.function, n.jurisdiction, n.penalty_type, n.description, n.institution_name, n.subject, n.text, n.topic, n.case_number, n.url];
 
 // ── User Constraints ────────────────────────────────────
 CREATE CONSTRAINT user_email_unique IF NOT EXISTS

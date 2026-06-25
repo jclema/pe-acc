@@ -56,9 +56,9 @@ export function Emendas() {
 
   const formatCurrency = (val: unknown) => {
     const num = typeof val === "number" ? val : 0;
-    return new Intl.NumberFormat("pt-BR", {
+    return new Intl.NumberFormat("es-PE", {
       style: "currency",
-      currency: "BRL",
+      currency: "PEN",
     }).format(num);
   };
 

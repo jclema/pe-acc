@@ -32,14 +32,14 @@ describe("SharedInvestigation", () => {
     mockGetSharedInvestigation.mockReturnValue(new Promise(() => {}));
     renderSharedInvestigation();
 
-    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+    expect(screen.getByText("Cargando...")).toBeInTheDocument();
   });
 
   it("shows investigation data after successful fetch", async () => {
     mockGetSharedInvestigation.mockResolvedValue({
       id: "inv-1",
-      title: "Investiga\u00E7\u00E3o Teste",
-      description: "Uma descri\u00E7\u00E3o",
+      title: "Investigación de prueba",
+      description: "Una descripción",
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
       entity_ids: ["e1", "e2"],
@@ -50,10 +50,10 @@ describe("SharedInvestigation", () => {
     renderSharedInvestigation();
 
     await waitFor(() => {
-      expect(screen.getByText("Investiga\u00E7\u00E3o Teste")).toBeInTheDocument();
+      expect(screen.getByText("Investigación de prueba")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Uma descri\u00E7\u00E3o")).toBeInTheDocument();
+    expect(screen.getByText("Una descripción")).toBeInTheDocument();
     expect(screen.getByText("e1")).toBeInTheDocument();
     expect(screen.getByText("e2")).toBeInTheDocument();
   });
@@ -65,7 +65,7 @@ describe("SharedInvestigation", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Investiga\u00E7\u00E3o compartilhada n\u00E3o encontrada."),
+        screen.getByText("No se encontró la investigación compartida."),
       ).toBeInTheDocument();
     });
   });

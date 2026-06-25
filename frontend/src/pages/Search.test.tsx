@@ -29,7 +29,7 @@ describe("Search", () => {
 
   it("renders search bar", () => {
     renderSearch();
-    expect(screen.getByPlaceholderText(/CPF/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i)).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
   });
 
@@ -46,7 +46,7 @@ describe("Search", () => {
 
     renderSearch();
 
-    await user.type(screen.getByPlaceholderText(/CPF/), "João");
+    await user.type(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i), "João");
     await user.click(screen.getByRole("button", { name: /buscar/i }));
 
     await waitFor(() => {
@@ -64,7 +64,7 @@ describe("Search", () => {
 
     renderSearch();
 
-    await user.type(screen.getByPlaceholderText(/CPF/), "test");
+    await user.type(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i), "test");
     await user.click(screen.getByRole("button", { name: /buscar/i }));
 
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -81,11 +81,11 @@ describe("Search", () => {
 
     renderSearch();
 
-    await user.type(screen.getByPlaceholderText(/CPF/), "test");
+    await user.type(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i), "test");
     await user.click(screen.getByRole("button", { name: /buscar/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/erro ao buscar/i)).toBeInTheDocument();
+      expect(screen.getByText(/error al buscar/i)).toBeInTheDocument();
     });
   });
 

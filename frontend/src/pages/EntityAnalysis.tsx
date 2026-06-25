@@ -1,18 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import {
+  getEntity,
   getEntityByElementId,
-  getEntityPatterns,
-  getBaseline,
-  listInvestigations,
-  addEntityToInvestigation,
-  createInvestigation,
   type EntityDetail,
-  type PatternResponse,
-  type BaselineResponse,
-  type Investigation,
 } from "@/api/client";
 import { Spinner } from "@/components/common/Spinner";
 import { GraphCanvas } from "@/components/graph/GraphCanvas";
@@ -20,11 +13,6 @@ import { ControlsSidebar } from "@/components/graph/ControlsSidebar";
 import { AnalysisNav } from "@/components/analysis/AnalysisNav";
 import { ConnectionsList } from "@/components/analysis/ConnectionsList";
 import { EntityHeader } from "@/components/analysis/EntityHeader";
-import { ExportView } from "@/components/analysis/ExportView";
-import { InsightsPanel } from "@/components/analysis/InsightsPanel";
-import { TimelineView } from "@/components/analysis/TimelineView";
-import { useEntityExposure } from "@/hooks/useEntityExposure";
-import { useEntityTimeline } from "@/hooks/useEntityTimeline";
 import { useGraphData } from "@/hooks/useGraphData";
 import { useEntityAnalysisStore } from "@/stores/entityAnalysis";
 import { useGraphExplorerStore } from "@/stores/graphExplorer";
@@ -80,50 +68,17 @@ export function EntityAnalysis() {
   // Data fetching
   const [entity, setEntity] = useState<EntityDetail | null>(null);
   const [entityLoading, setEntityLoading] = useState(true);
-  const [patterns, setPatterns] = useState<PatternResponse | null>(null);
-  const [baseline, setBaseline] = useState<BaselineResponse | null>(null);
-
-  // Lazy-load tracking: only fetch heavy data when its section is first viewed
-  const loadedSectionsRef = useRef<Set<string>>(new Set());
-
-  const { data: exposure, loading: exposureLoading } = useEntityExposure(id);
   const { data: graphData, loading: graphLoading } = useGraphData(id, graphStore.depth);
-
-  // Timeline: only fetch when timeline tab is activated
-  const [timelineEnabled, setTimelineEnabled] = useState(false);
-  const {
-    events: timelineEvents,
-    loading: timelineLoading,
-    hasMore: timelineHasMore,
-    loadMore: timelineLoadMore,
-  } = useEntityTimeline(timelineEnabled ? id : "");
-
-  // Investigation modal
-  const [showInvModal, setShowInvModal] = useState(false);
-  const [investigations, setInvestigations] = useState<Investigation[]>([]);
-  const [invLoading, setInvLoading] = useState(false);
-  const [newInvTitle, setNewInvTitle] = useState("");
-
-  // Reset lazy-load tracking on entity change
-  useEffect(() => {
-    loadedSectionsRef.current = new Set();
-    setTimelineEnabled(false);
-  }, [id]);
-
-  // Trigger lazy loads when tabs are activated
-  useEffect(() => {
-    if (activeTab === "timeline" && !loadedSectionsRef.current.has("timeline")) {
-      loadedSectionsRef.current.add("timeline");
-      setTimelineEnabled(true);
-    }
-  }, [activeTab]);
+  const isPublicIdentifier = /^\d{11}$/.test(id) || /^\d{14}$/.test(id);
 
   // Fetch entity only on mount — patterns and baseline are deferred
   useEffect(() => {
     if (!id) return;
     setEntityLoading(true);
 
-    getEntityByElementId(id)
+    const request = isPublicIdentifier ? getEntity(id) : getEntityByElementId(id);
+
+    request
       .then((ent) => {
         setEntity(ent);
       })
@@ -131,40 +86,29 @@ export function EntityAnalysis() {
         // Error handled by component (shows notFound)
       })
       .finally(() => setEntityLoading(false));
-  }, [id]);
-
-  // Lazy-load patterns + baseline after entity loads (non-blocking)
-  useEffect(() => {
-    if (!id || !entity) return;
-    if (loadedSectionsRef.current.has("insights")) return;
-    loadedSectionsRef.current.add("insights");
-
-    getEntityPatterns(id)
-      .then(setPatterns)
-      .catch(() => {});
-    getBaseline(id)
-      .then(setBaseline)
-      .catch(() => {});
-  }, [id, entity]);
+  }, [id, isPublicIdentifier]);
 
   // Save to recent analyses
   useEffect(() => {
-    if (entity && exposure) {
+    if (entity) {
       const rawName =
+        entity.properties.legal_name ??
+        entity.properties.trade_name ??
         entity.properties.nome ??
         entity.properties.razao_social ??
         entity.properties.name ??
+        entity.properties.title ??
         entity.id;
       const name = typeof rawName === "string" ? rawName : String(rawName);
       saveRecentAnalysis({
         entityId: entity.id,
         name,
         type: entity.type,
-        exposure: exposure.exposure_index,
+        exposure: 0,
         timestamp: Date.now(),
       });
     }
-  }, [entity, exposure]);
+  }, [entity]);
 
   // Reset graph store on entity change
   useEffect(() => {
@@ -215,41 +159,6 @@ export function EntityAnalysis() {
     setSelectedNodeId(null);
   }, [setSelectedNodeId]);
 
-  // Investigation modal handlers
-  const handleOpenInvModal = useCallback(() => {
-    setShowInvModal(true);
-    setInvLoading(true);
-    listInvestigations()
-      .then((res) => setInvestigations(res.investigations))
-      .catch(() => {})
-      .finally(() => setInvLoading(false));
-  }, []);
-
-  const handleAddToInvestigation = useCallback(
-    (investigationId: string) => {
-      void addEntityToInvestigation(investigationId, id).then(() =>
-        setShowInvModal(false),
-      );
-    },
-    [id],
-  );
-
-  const handleCreateInvestigation = useCallback(() => {
-    if (!newInvTitle.trim()) return;
-    void createInvestigation(newInvTitle.trim()).then((inv) => {
-      void addEntityToInvestigation(inv.id, id).then(() => {
-        setShowInvModal(false);
-        setNewInvTitle("");
-      });
-    });
-  }, [newInvTitle, id]);
-
-  // Export stubs
-  const handleExportPdf = useCallback(() => {}, []);
-  const handleExportCsv = useCallback(() => {}, []);
-  const handleExportJson = useCallback(() => {}, []);
-  const handleExportScreenshot = useCallback(() => {}, []);
-
   if (entityLoading) {
     return (
       <div className={styles.loading}>
@@ -270,9 +179,8 @@ export function EntityAnalysis() {
     <div className={styles.page}>
       <EntityHeader
         entity={entity}
-        exposure={exposure}
+        exposure={null}
         onBack={handleBack}
-        onAddToInvestigation={handleOpenInvModal}
       />
 
       <div className={styles.body}>
@@ -333,99 +241,8 @@ export function EntityAnalysis() {
             />
           )}
 
-          {activeTab === "timeline" && (
-            <TimelineView
-              events={timelineEvents}
-              loading={timelineLoading}
-              hasMore={timelineHasMore}
-              onLoadMore={timelineLoadMore}
-            />
-          )}
-
-          {activeTab === "export" && (
-            <ExportView
-              onExportPdf={handleExportPdf}
-              onExportCsv={handleExportCsv}
-              onExportJson={handleExportJson}
-              onExportScreenshot={handleExportScreenshot}
-            />
-          )}
         </main>
-
-        <InsightsPanel
-          exposure={exposure}
-          patterns={patterns}
-          baseline={baseline}
-          nodes={graphData?.nodes ?? []}
-          exposureLoading={exposureLoading}
-        />
       </div>
-
-      {/* Add to Investigation Modal */}
-      {showInvModal && (
-        <div
-          className={styles.overlay}
-          onClick={() => setShowInvModal(false)}
-          role="presentation"
-        >
-          <div
-            className={styles.modal}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-label={t("investigation.addEntity")}
-          >
-            <h3 className={styles.modalTitle}>
-              {t("investigation.addEntity")}
-            </h3>
-
-            {invLoading ? (
-              <Spinner variant="scan" size="sm" />
-            ) : (
-              <div className={styles.invList}>
-                {investigations.map((inv) => (
-                  <button
-                    key={inv.id}
-                    className={styles.invItem}
-                    onClick={() => handleAddToInvestigation(inv.id)}
-                  >
-                    <span className={styles.invTitle}>{inv.title}</span>
-                    <span className={styles.invCount}>
-                      {inv.entity_ids.length} {t("investigation.entities")}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className={styles.newInv}>
-              <input
-                type="text"
-                value={newInvTitle}
-                onChange={(e) => setNewInvTitle(e.target.value)}
-                placeholder={t("investigation.newInvestigation")}
-                className={styles.newInvInput}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateInvestigation();
-                }}
-              />
-              <button
-                className={styles.newInvBtn}
-                onClick={handleCreateInvestigation}
-                disabled={!newInvTitle.trim()}
-              >
-                {t("common.confirm")}
-              </button>
-            </div>
-
-            <button
-              className={styles.modalClose}
-              onClick={() => setShowInvModal(false)}
-            >
-              {t("common.cancel")}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

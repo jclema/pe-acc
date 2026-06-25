@@ -60,16 +60,16 @@ describe("Login", () => {
   it("renders login form", () => {
     renderLogin();
 
-    expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/senha/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/correo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/contraseña/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /entrar/i }),
+      screen.getByRole("button", { name: /ingresar/i }),
     ).toBeInTheDocument();
   });
 
   it("has link to register page", () => {
     renderLogin();
-    const link = screen.getByText(/registre-se/i);
+    const link = screen.getByText(/regístrate/i);
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/register");
   });
@@ -78,9 +78,9 @@ describe("Login", () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.type(screen.getByLabelText(/e-mail/i), "test@example.com");
-    await user.type(screen.getByLabelText(/senha/i), "password123");
-    await user.click(screen.getByRole("button", { name: /entrar/i }));
+    await user.type(screen.getByLabelText(/correo/i), "test@example.com");
+    await user.type(screen.getByLabelText(/contraseña/i), "password123");
+    await user.click(screen.getByRole("button", { name: /ingresar/i }));
 
     expect(mockLogin).toHaveBeenCalledWith("test@example.com", "password123");
   });
@@ -89,11 +89,11 @@ describe("Login", () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.click(screen.getByRole("button", { name: /entrar/i }));
+    await user.click(screen.getByRole("button", { name: /ingresar/i }));
 
     expect(mockLogin).not.toHaveBeenCalled();
     expect(
-      screen.getByText(/e-mail é obrigatório/i),
+      screen.getByText(/el correo es obligatorio/i),
     ).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe("Login", () => {
     renderLogin();
 
     expect(
-      screen.getByText(/e-mail ou senha incorretos/i),
+      screen.getByText(/correo o contraseña incorrectos/i),
     ).toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe("Login", () => {
     mockStoreState.loading = true;
     renderLogin();
 
-    const submitBtn = screen.getByRole("button", { name: /carregando/i });
+    const submitBtn = screen.getByRole("button", { name: /cargando/i });
     expect(submitBtn).toBeDisabled();
   });
 
@@ -124,9 +124,9 @@ describe("Login", () => {
 
     renderLogin();
 
-    await user.type(screen.getByLabelText(/e-mail/i), "test@example.com");
-    await user.type(screen.getByLabelText(/senha/i), "password123");
-    await user.click(screen.getByRole("button", { name: /entrar/i }));
+    await user.type(screen.getByLabelText(/correo/i), "test@example.com");
+    await user.type(screen.getByLabelText(/contraseña/i), "password123");
+    await user.click(screen.getByRole("button", { name: /ingresar/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/app");
   });

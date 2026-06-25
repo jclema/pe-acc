@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { type GraphData, getGraphData } from "@/api/client";
+import { type GraphData, getGraphData, getPublicProviderGraph } from "@/api/client";
 
 const CACHE_MAX_ENTRIES = 20;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -65,6 +65,7 @@ export function useGraphData(
 
   useEffect(() => {
     if (!entityId) return;
+    const isPublicProviderId = /^\d{11}$/.test(entityId);
 
     const key = `${entityId}:${String(depth)}`;
     const cached = cache.get(key);
@@ -80,7 +81,11 @@ export function useGraphData(
     setLoading(true);
     setError(null);
 
-    getGraphData(entityId, depth, undefined, controller.signal)
+    const request = isPublicProviderId
+      ? getPublicProviderGraph(entityId, depth, controller.signal)
+      : getGraphData(entityId, depth, undefined, controller.signal);
+
+    request
       .then((result) => {
         cache.set(key, result);
         setData(result);

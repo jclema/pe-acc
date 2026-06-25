@@ -12,13 +12,13 @@ interface EntityHeaderProps {
   entity: EntityDetail;
   exposure: ExposureResponse | null;
   onBack: () => void;
-  onAddToInvestigation: () => void;
+  onAddToInvestigation?: () => void;
 }
 
 function formatMoney(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
+  return new Intl.NumberFormat("es-PE", {
     style: "currency",
-    currency: "BRL",
+    currency: "PEN",
     notation: "compact",
   }).format(value);
 }
@@ -32,11 +32,26 @@ function EntityHeaderInner({
   const { t } = useTranslation();
 
   const rawName =
+    entity.properties.legal_name ??
+    entity.properties.trade_name ??
     entity.properties.nome ??
     entity.properties.razao_social ??
     entity.properties.name ??
+    entity.properties.title ??
+    entity.properties.entity_name ??
+    entity.properties.ruc ??
     entity.id;
   const name = typeof rawName === "string" ? rawName : String(rawName);
+  const secondaryIdRaw =
+    entity.properties.ruc ??
+    entity.properties.entity_id ??
+    entity.properties.process_id ??
+    entity.properties.seace_code ??
+    entity.properties.award_id ??
+    entity.properties.execution_id ??
+    entity.properties.cnpj ??
+    entity.properties.cpf;
+  const secondaryId = secondaryIdRaw ? String(secondaryIdRaw) : null;
 
   const typeColor = entityColors[entity.type] ?? "var(--text-muted)";
 
@@ -54,7 +69,10 @@ function EntityHeaderInner({
         <ArrowLeft size={16} />
       </button>
 
-      <span className={styles.name}>{name}</span>
+      <div className={styles.identity}>
+        <span className={styles.name}>{name}</span>
+        {secondaryId && <span className={styles.secondaryId}>{secondaryId}</span>}
+      </div>
 
       <span className={styles.typeBadge}>
         <span
@@ -90,10 +108,12 @@ function EntityHeaderInner({
         )}
       </div>
 
-      <button className={styles.addBtn} onClick={onAddToInvestigation}>
-        <Plus size={14} />
-        {t("investigation.addEntity")}
-      </button>
+      {onAddToInvestigation && (
+        <button className={styles.addBtn} onClick={onAddToInvestigation}>
+          <Plus size={14} />
+          {t("investigation.addEntity")}
+        </button>
+      )}
     </header>
   );
 }

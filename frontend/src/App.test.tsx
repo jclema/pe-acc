@@ -24,7 +24,7 @@ vi.mock("./stores/auth", () => ({
 
 // Keep App route test deterministic without Landing async effects.
 vi.mock("./pages/Landing", () => ({
-  Landing: () => <div>BR-ACC</div>,
+  Landing: () => <div>PE-ACC</div>,
 }));
 
 import { App } from "./App";
@@ -39,7 +39,7 @@ describe("App", () => {
       );
     });
     await waitFor(() => {
-      expect(screen.getAllByText("BR-ACC").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("PE-ACC").length).toBeGreaterThan(0);
     });
   });
 
@@ -52,7 +52,7 @@ describe("App", () => {
       );
     });
     await waitFor(() => {
-      expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/correo/i)).toBeInTheDocument();
     });
   });
 });

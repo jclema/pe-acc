@@ -30,6 +30,16 @@ def _escape_lucene(query: str) -> str:
 def _extract_name(node: Any, labels: list[str]) -> str:
     props = dict(node)
     entity_type = labels[0].lower() if labels else ""
+    if entity_type == "provider":
+        return str(props.get("legal_name", props.get("trade_name", props.get("name", ""))))
+    if entity_type == "entity":
+        return str(props.get("name", props.get("entity_id", "")))
+    if entity_type == "procurementprocess":
+        return str(props.get("title", props.get("seace_code", props.get("process_id", ""))))
+    if entity_type == "award":
+        return str(props.get("award_title", props.get("award_id", "")))
+    if entity_type == "budgetexecution":
+        return str(props.get("entity_name", props.get("execution_id", "")))
     if entity_type == "company":
         return str(props.get("razao_social", props.get("name", props.get("nome_fantasia", ""))))
     if entity_type in ("contract", "amendment", "convenio"):
@@ -92,7 +102,7 @@ async def search_entities(
             sources = [SourceAttribution(database=s) for s in source_val]
 
         doc_id = record["document_id"]
-        # Only expose cpf/cnpj as document, not internal element IDs
+        # Only expose public-facing identifiers, not internal element IDs
         document = str(doc_id) if doc_id and not str(doc_id).startswith("4:") else None
 
         results.append(SearchResult(

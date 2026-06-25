@@ -2,11 +2,18 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  height: 56px;
+  min-height: 56px;
   padding: 0 var(--space-md);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
 }
 
 .backBtn {
@@ -33,6 +40,16 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.secondaryId {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -31,7 +31,7 @@ import { InvestigationPanel } from "./InvestigationPanel";
 describe("InvestigationPanel", () => {
   it("renders 'New Investigation' button", () => {
     render(<InvestigationPanel />);
-    expect(screen.getByText(/Nova investigação/i)).toBeDefined();
+    expect(screen.getByText(/Nueva investigación/i)).toBeDefined();
   });
 
   it("renders investigation title when provided", () => {
@@ -56,7 +56,7 @@ describe("InvestigationPanel", () => {
     mockStore.investigations = [];
 
     render(<InvestigationPanel />);
-    expect(screen.getByText(/Nenhuma investigação/i)).toBeDefined();
+    expect(screen.getByText(/No hay investigaciones/i)).toBeDefined();
   });
 
   it("calls fetchInvestigations on mount", () => {

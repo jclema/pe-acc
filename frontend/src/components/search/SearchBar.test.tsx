@@ -9,7 +9,7 @@ import { SearchBar } from "./SearchBar";
 describe("SearchBar", () => {
   it("renders input, select, and button", () => {
     render(<SearchBar onSearch={vi.fn()} />);
-    expect(screen.getByPlaceholderText(/CPF/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i)).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
   });
@@ -20,7 +20,7 @@ describe("SearchBar", () => {
 
     render(<SearchBar onSearch={onSearch} />);
 
-    await user.type(screen.getByPlaceholderText(/CPF/), "João Silva");
+    await user.type(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i), "João Silva");
     await user.click(screen.getByRole("button"));
 
     expect(onSearch).toHaveBeenCalledWith({ query: "João Silva", type: "all" });
@@ -38,7 +38,7 @@ describe("SearchBar", () => {
 
   it("shows loading text when isLoading is true", () => {
     render(<SearchBar onSearch={vi.fn()} isLoading />);
-    expect(screen.getByRole("button")).toHaveTextContent(/Carregando/);
+    expect(screen.getByRole("button")).toHaveTextContent(/Cargando/);
   });
 
   it("allows selecting a type filter", async () => {
@@ -48,7 +48,7 @@ describe("SearchBar", () => {
     render(<SearchBar onSearch={onSearch} />);
 
     await user.selectOptions(screen.getByRole("combobox"), "company");
-    await user.type(screen.getByPlaceholderText(/CPF/), "Acme");
+    await user.type(screen.getByPlaceholderText(/RUC, proveedor, entidad o proceso/i), "Acme");
     await user.click(screen.getByRole("button"));
 
     expect(onSearch).toHaveBeenCalledWith({ query: "Acme", type: "company" });

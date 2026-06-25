@@ -6,9 +6,9 @@ interface MoneyLabelProps {
 }
 
 export function MoneyLabel({ value, className }: MoneyLabelProps) {
-  const formatted = value.toLocaleString("pt-BR", {
+  const formatted = value.toLocaleString("es-PE", {
     style: "currency",
-    currency: "BRL",
+    currency: "PEN",
   });
 
   return <span className={`${styles.money} ${className ?? ""}`}>{formatted}</span>;

@@ -49,7 +49,7 @@ describe("EntityHeader", () => {
         onAddToInvestigation={vi.fn()}
       />,
     );
-    expect(screen.getByText("Pessoa")).toBeInTheDocument();
+    expect(screen.getByText("Persona")).toBeInTheDocument();
   });
 
   it("renders source badge", () => {
@@ -74,7 +74,7 @@ describe("EntityHeader", () => {
         onAddToInvestigation={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByLabelText("Voltar"));
+    fireEvent.click(screen.getByLabelText("Volver"));
     expect(onBack).toHaveBeenCalledOnce();
   });
 
@@ -88,7 +88,7 @@ describe("EntityHeader", () => {
         onAddToInvestigation={onAdd}
       />,
     );
-    fireEvent.click(screen.getByText("Adicionar entidade"));
+    fireEvent.click(screen.getByText("Agregar entidad"));
     expect(onAdd).toHaveBeenCalledOnce();
   });
 

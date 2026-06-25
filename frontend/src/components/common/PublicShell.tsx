@@ -11,7 +11,7 @@ export function PublicShell() {
   const token = useAuthStore((s) => s.token);
 
   const toggleLang = () => {
-    const next = i18n.language === "pt-BR" ? "en" : "pt-BR";
+    const next = i18n.language === "es-PE" ? "en" : "es-PE";
     i18n.changeLanguage(next);
   };
 
@@ -24,7 +24,7 @@ export function PublicShell() {
         <div className={styles.actions}>
           {IS_PUBLIC_MODE ? (
             <Link to="/app/search" className={styles.registerLink}>
-              Open Explorer
+              Abrir explorador
             </Link>
           ) : !token && (
             <>
@@ -41,7 +41,7 @@ export function PublicShell() {
             className={styles.langToggle}
             type="button"
           >
-            {i18n.language === "pt-BR" ? "EN" : "PT"}
+            {i18n.language === "es-PE" ? "EN" : "ES"}
           </button>
         </div>
       </header>

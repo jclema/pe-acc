@@ -4,20 +4,14 @@ import { Navigate, Route, Routes, useParams } from "react-router";
 import { AppShell } from "./components/common/AppShell";
 import { PublicShell } from "./components/common/PublicShell";
 import { Spinner } from "./components/common/Spinner";
-import { IS_PATTERNS_ENABLED, IS_PUBLIC_MODE } from "./config/runtime";
-import { Baseline } from "./pages/Baseline";
-import { Dashboard } from "./pages/Dashboard";
-import { Investigations } from "./pages/Investigations";
+import { IS_PUBLIC_MODE } from "./config/runtime";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
-import { Patterns } from "./pages/Patterns";
 import { Register } from "./pages/Register";
 import { Search } from "./pages/Search";
-import { SharedInvestigation } from "./pages/SharedInvestigation";
 import { useAuthStore } from "./stores/auth";
 
 const EntityAnalysis = lazy(() => import("./pages/EntityAnalysis").then((m) => ({ default: m.EntityAnalysis })));
-const Emendas = lazy(() => import("./pages/Emendas").then((m) => ({ default: m.Emendas })));
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -62,9 +56,6 @@ export function App() {
         {!IS_PUBLIC_MODE && <Route path="register" element={<Register />} />}
       </Route>
 
-      {/* Public — shared investigation (no auth, no shell) */}
-      <Route path="shared/:token" element={<SharedInvestigation />} />
-
       {/* Authenticated shell — the intelligence workspace */}
       <Route
         path="app"
@@ -74,16 +65,10 @@ export function App() {
           </RequireAuth>
         )}
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<Navigate to="/app/search" replace />} />
         <Route path="search" element={<Search />} />
         <Route path="analysis/:entityId" element={<Suspense fallback={<Spinner />}><EntityAnalysis /></Suspense>} />
-        <Route path="emendas" element={<Suspense fallback={<Spinner />}><Emendas /></Suspense>} />
         <Route path="graph/:entityId" element={<GraphRedirect />} />
-        {IS_PATTERNS_ENABLED && <Route path="patterns" element={<Patterns />} />}
-        {IS_PATTERNS_ENABLED && <Route path="patterns/:entityId" element={<Patterns />} />}
-        <Route path="baseline/:entityId" element={<Baseline />} />
-        {!IS_PUBLIC_MODE && <Route path="investigations" element={<Investigations />} />}
-        {!IS_PUBLIC_MODE && <Route path="investigations/:investigationId" element={<Investigations />} />}
       </Route>
 
       {/* Catch-all */}

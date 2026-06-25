@@ -61,7 +61,7 @@ describe("Landing", () => {
       renderLanding();
     });
     // Hero heading should be rendered
-    expect(screen.getByText("Siga o dinheiro p\u00FAblico")).toBeInTheDocument();
+    expect(screen.getByText("Sigue el dinero p\u00FAblico")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText("58.5M")).toBeInTheDocument();
     });
@@ -71,9 +71,9 @@ describe("Landing", () => {
     await act(async () => {
       renderLanding();
     });
-    expect(screen.getByText("Siga o dinheiro p\u00FAblico")).toBeInTheDocument();
-    expect(screen.getByText("Explorar o grafo")).toBeInTheDocument();
-    expect(screen.getByText("BR-ACC \u00B7 Dados abertos")).toBeInTheDocument();
+    expect(screen.getByText("Sigue el dinero p\u00FAblico")).toBeInTheDocument();
+    expect(screen.getByText("Explorar el grafo")).toBeInTheDocument();
+    expect(screen.getByText("PE-ACC \u00B7 Datos abiertos")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText("58.5M")).toBeInTheDocument();
     });
@@ -85,13 +85,13 @@ describe("Landing", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("CNPJ")).toBeInTheDocument();
+      expect(screen.getByText("RUC")).toBeInTheDocument();
     });
 
     const sourceNames = [
-      "CNPJ", "TSE", "Transpar\u00EAncia", "CEIS/CNEP", "DATASUS",
-      "BNDES", "PGFN", "IBAMA", "ComprasNet", "TCU",
-      "TransfereGov", "RAIS", "INEP",
+      "RUC", "SEACE", "Transparencia", "OSCE", "MEF",
+      "PCM", "SUNAT", "Contraloria", "Datos Abiertos", "Gob.pe",
+      "SEACE Historico", "OSCE Sanciones", "Ejecucion",
     ];
 
     for (const name of sourceNames) {

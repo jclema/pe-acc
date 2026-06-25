@@ -1,4 +1,9 @@
 export const dataColors = {
+  provider: "#E07A5F",
+  entity: "#3B82F6",
+  procurementprocess: "#8B5CF6",
+  award: "#F2CC8F",
+  budgetexecution: "#0D9488",
   person: "#4EA8DE",
   company: "#E07A5F",
   election: "#81B29A",
@@ -95,6 +100,11 @@ export const semanticColors = {
 
 // Backward compat: entityColors maps old types to new data palette
 export const entityColors: Record<string, string> = {
+  provider: dataColors.provider,
+  entity: dataColors.entity,
+  procurementprocess: dataColors.procurementprocess,
+  award: dataColors.award,
+  budgetexecution: dataColors.budgetexecution,
   person: dataColors.person,
   company: dataColors.company,
   contract: dataColors.contract,

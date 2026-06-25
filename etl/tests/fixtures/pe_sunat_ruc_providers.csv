@@ -1,0 +1,4 @@
+ruc,legal_name,trade_name,tax_status,tax_condition,ubigeo,source_url,extraction_date
+20123456789,Constructora Andina S.A.C.,Andina,ACTIVO,HABIDO,150101,https://example.gob.pe/sunat/20123456789,2026-04-01
+20654321987,Servicios Civicos del Peru E.I.R.L.,Civicos,ACTIVO,HABIDO,040101,https://example.gob.pe/sunat/20654321987,01/04/2026
+12345,Registro Invalido SAC,,BAJA,NO_HABIDO,150102,https://example.gob.pe/sunat/12345,2026-04-01

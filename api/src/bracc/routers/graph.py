@@ -23,13 +23,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/graph", tags=["graph"])
 
 _GRAPH_PROPS = {
-    "name", "razao_social", "cnpj", "cpf", "value", "date",
-    "type", "uf", "cargo", "partido",
+    "name", "razao_social", "legal_name", "trade_name", "cnpj", "cpf", "ruc",
+    "entity_id", "process_id", "seace_code", "award_id", "execution_id",
+    "value", "date", "status", "title", "object", "type", "uf", "cargo", "partido",
 }
 
 _DEFAULT_LABEL_FILTER = "-User|-Investigation|-Annotation|-Tag"
 
 _LABEL_MAP: dict[str, str] = {
+    "provider": "Provider",
+    "entity": "Entity",
+    "procurementprocess": "ProcurementProcess",
+    "award": "Award",
+    "budgetexecution": "BudgetExecution",
     "person": "Person",
     "company": "Company",
     "contract": "Contract",
@@ -53,6 +59,16 @@ def _is_pep(properties: dict[str, Any]) -> bool:
 def _extract_label(node: Any, labels: list[str]) -> str:
     props = dict(node)
     entity_type = labels[0].lower() if labels else ""
+    if entity_type == "provider":
+        return str(props.get("legal_name", props.get("trade_name", props.get("ruc", ""))))
+    if entity_type == "entity":
+        return str(props.get("name", props.get("entity_id", "")))
+    if entity_type == "procurementprocess":
+        return str(props.get("title", props.get("seace_code", props.get("process_id", ""))))
+    if entity_type == "award":
+        return str(props.get("award_title", props.get("award_id", "Award")))
+    if entity_type == "budgetexecution":
+        return str(props.get("entity_name", props.get("execution_id", "BudgetExecution")))
     if entity_type == "company":
         return str(props.get("razao_social", props.get("name", props.get("nome_fantasia", ""))))
     if entity_type == "finance":
@@ -158,7 +174,14 @@ async def get_graph(
             sources = [SourceAttribution(database=s) for s in source_val]
 
         doc_id = (
-            props.get("cpf")
+            props.get("ruc")
+            or props.get("entity_id")
+            or props.get("process_id")
+            or props.get("seace_code")
+            or props.get("award_id")
+            or props.get("execution_id")
+            or props.get("provider_ruc")
+            or props.get("cpf")
             or props.get("cnpj")
             or props.get("contract_id")
             or props.get("sanction_id")

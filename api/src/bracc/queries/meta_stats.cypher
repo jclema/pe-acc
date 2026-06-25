@@ -5,6 +5,21 @@ CALL {
   MATCH ()-[r]->() RETURN count(r) AS total_relationships
 }
 CALL {
+  MATCH (p:Provider) RETURN count(p) AS provider_count
+}
+CALL {
+  MATCH (e:Entity) RETURN count(e) AS public_entity_count
+}
+CALL {
+  MATCH (p:ProcurementProcess) RETURN count(p) AS procurement_process_count
+}
+CALL {
+  MATCH (a:Award) RETURN count(a) AS award_count
+}
+CALL {
+  MATCH (b:BudgetExecution) RETURN count(b) AS budget_execution_count
+}
+CALL {
   MATCH (p:Person) RETURN count(p) AS person_count
 }
 CALL {
@@ -137,6 +152,7 @@ CALL {
   MATCH (mga:MunicipalGazetteAct) RETURN count(mga) AS municipal_gazette_act_count
 }
 RETURN total_nodes, total_relationships,
+       provider_count, public_entity_count, procurement_process_count, award_count, budget_execution_count,
        person_count, company_count, health_count,
        finance_count, contract_count, sanction_count,
        election_count, amendment_count, embargo_count,

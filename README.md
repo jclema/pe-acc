@@ -1,10 +1,10 @@
-# br/acc open graph
+# pe/acc open graph
 
 [![WTG Header](docs/brand/bracc-header.jpg)](docs/brand/bracc-header.jpg)
 
 [English](README.md) | [Portugues](docs/pt-BR/README.md)
 
-**Open-source graph infrastructure that cross-references Brazil's public databases to generate actionable intelligence for civic improvement.**
+**Open-source graph infrastructure for a Peru-focused integrity and accountability prototype built on public data.**
 
 [![CI](https://github.com/brunoclz/br-acc/actions/workflows/ci.yml/badge.svg)](https://github.com/brunoclz/br-acc/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
@@ -19,24 +19,30 @@
 
 ---
 
-## What is br/acc?
+## What is pe/acc?
 
-br/acc is a decentralized movement of Brazilian builders using technology and open data to make public information more accessible. This repository is one of its projects: an open-source graph infrastructure that ingests official Brazilian public databases — company registries, health records, education metrics, employment data, public finances, procurement, environment — and normalizes them into a single queryable graph.
+pe/acc is an adaptation of the `br-acc` graph stack for Peru. The current goal is pragmatic: get a functional local prototype running fast, prove value with real Peruvian public data, and only then expand the architecture, contracts, and deployment layers.
 
-It makes public data that is already open but scattered across dozens of portals accessible in one place. It does not interpret, score, or rank results — it surfaces connections and lets users draw their own conclusions.
+The first MVP focuses on a small but useful civic integrity graph:
+- providers identified by `RUC`
+- procurement processes and awards from `SEACE / CONOSCE`
+- public sanctions from `OSCE`
+- budget context from `MEF` when available
 
-[Learn more at bracc.org](https://bracc.org)
+The product should help journalists, civil society organizations, and public-interest researchers answer simple but high-value questions with traceable public data. It does not interpret, score, or rank results.
+
+[Reference upstream project: br-acc](https://github.com/brunoclz/br-acc)
 
 ---
 
 ## Features
 
-- **45 implemented ETL pipeline modules** — status is tracked in `docs/source_registry_br_v1.csv` (loaded/partial/stale/blocked/not_built)
-- **Neo4j graph infrastructure** — schema, loaders, and query surface for normalized entities and relationships
-- **React frontend** — search, explore corporate networks, and analyze entity connections
-- **Public API** — programmatic access to graph data via FastAPI
-- **Reproducibility tooling** — one-command local bootstrap plus BYO-data ETL workflow
-- **Privacy-first** — LGPD compliant, public-safe defaults, no personal data exposure
+- **MVP-first Peru fork** — keep the original architecture, but activate only the smallest useful product surface
+- **Neo4j graph infrastructure** — schema, loaders, and query surface for Peruvian providers, entities, processes, sanctions, and budget context
+- **React frontend** — landing, search, provider detail, and graph exploration
+- **Public API surface** — metadata, search, and public graph endpoints
+- **Incremental ETL strategy** — start with `RUC + SEACE / CONOSCE + OSCE`, then add `MEF`
+- **Traceability-first** — visible source health, provenance, and public-safe defaults
 
 ---
 
@@ -48,7 +54,19 @@ docker compose up -d --build
 bash infra/scripts/seed-dev.sh
 ```
 
-This flow starts the Docker stack from the repository root and then loads deterministic development seed data into Neo4j.
+This flow starts the Docker stack from the repository root and then loads deterministic development seed data into Neo4j. The current local prototype path is intentionally optimized for fast iteration before public deployment.
+
+For the Peru MVP specifically, there is now a second local path based on small public-safe CSV inputs instead of the legacy synthetic graph seed:
+
+```bash
+cp .env.example .env
+make bootstrap-pe-demo
+```
+
+That flow loads a minimal Peru graph around:
+- providers from `SUNAT / RUC`
+- sanctions from `OSCE`
+- processes and awards from `SEACE / CONOSCE`
 
 Verify with:
 
@@ -72,7 +90,7 @@ Optional: include the ETL service (for running pipelines in a container):
 docker compose --profile etl up -d
 ```
 
-Same verification URLs apply. For a ready-to-use demo graph with seed data, use `make bootstrap-demo` instead.
+Same verification URLs apply. For a ready-to-use Peru MVP graph, use `make bootstrap-pe-demo`. Use `make bootstrap-demo` only for the legacy upstream seed.
 
 ---
 
@@ -111,11 +129,40 @@ Detailed guide: [`docs/bootstrap_all.md`](docs/bootstrap_all.md)
 
 ---
 
-## What Is Included In This Public Repo
+## Current Prototype Focus
+
+- Keep the upstream `br-acc` architecture largely intact.
+- Hide or disable non-MVP modules while the Peru prototype is taking shape.
+- Build a first useful user journey around:
+  - search by `RUC`, provider name, entity, or process
+  - provider profile
+  - relationship view between provider, process, entity, and sanction
+- Delay advanced features such as patterns, scoring, and investigation workspaces until the Peru MVP shows clear value.
+
+## Peru Demo Flow
+
+The recommended local path for Peru MVP work is:
+
+```bash
+cp .env.example .env
+make bootstrap-pe-demo
+```
+
+This starts the local Docker stack, copies versioned demo CSVs from `data/demo/pe/` into the ETL input layout under `data/pe/`, and runs the three MVP pipelines in order:
+
+1. `pe_sunat_ruc`
+2. `pe_osce_sanctions`
+3. `pe_seace_conosce`
+
+Use `bash infra/scripts/seed-dev.sh` only when you want the older synthetic development graph from the upstream project.
+
+---
+
+## What Is Included In This Repo
 
 - API, frontend, ETL framework, and infrastructure code.
 - Source registry and pipeline status documentation.
-- Synthetic demo dataset and deterministic local seed path.
+- Peru MVP demo CSVs and synthetic legacy seed data.
 - Public safety/compliance gates and release governance docs.
 
 ## What Is Not Included By Default
@@ -126,7 +173,8 @@ Detailed guide: [`docs/bootstrap_all.md`](docs/bootstrap_all.md)
 
 ## What Is Reproducible Locally Today
 
-- Full local stack startup (`docker compose up -d --build`) with demo graph seed (`bash infra/scripts/seed-dev.sh`).
+- Full Peru MVP local bootstrap with `make bootstrap-pe-demo`.
+- Legacy synthetic seed flow with `docker compose up -d --build` plus `bash infra/scripts/seed-dev.sh`.
 - BYO-data ingestion workflow through `bracc-etl` pipelines.
 - One-command heavy orchestration (`make bootstrap-all`) with explicit blocked/failed source reporting.
 - Public-safe API behavior with privacy defaults.
@@ -176,8 +224,8 @@ data/         Downloaded datasets (git-ignored)
 |---|---|---|
 | GET | `/health` | Health check |
 | GET | `/api/v1/public/meta` | Aggregated metrics and source health |
-| GET | `/api/v1/public/graph/company/{cnpj_or_id}` | Public company subgraph |
-| GET | `/api/v1/public/patterns/company/{cnpj_or_id}` | Pattern analysis (when enabled) |
+| GET | `/api/v1/search` | Public search surface used by the MVP |
+| GET | `/api/v1/public/graph/proveedor/{ruc}` | Peru MVP public graph route for provider exploration |
 
 Full interactive docs available at `http://localhost:8000/docs` after starting the API.
 

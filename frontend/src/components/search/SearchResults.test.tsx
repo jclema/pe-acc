@@ -36,7 +36,7 @@ function renderResults(results: SearchResult[]) {
 describe("SearchResults", () => {
   it("shows no results message when empty", () => {
     renderResults([]);
-    expect(screen.getByText(/nenhum resultado/i)).toBeInTheDocument();
+    expect(screen.getByText(/no se encontraron resultados/i)).toBeInTheDocument();
   });
 
   it("renders result items with names", () => {
@@ -47,7 +47,7 @@ describe("SearchResults", () => {
 
   it("renders type badges", () => {
     renderResults(sampleResults);
-    expect(screen.getByText("Pessoa")).toBeInTheDocument();
+    expect(screen.getByText("Persona")).toBeInTheDocument();
     expect(screen.getByText("Empresa")).toBeInTheDocument();
   });
 

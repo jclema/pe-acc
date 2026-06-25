@@ -41,13 +41,24 @@ async def database_stats(
     result = {
         "total_nodes": record["total_nodes"] if record else 0,
         "total_relationships": record["total_relationships"] if record else 0,
+        "provider_count": record["provider_count"] if record else 0,
+        "public_entity_count": record["public_entity_count"] if record else 0,
+        "procurement_process_count": record["procurement_process_count"] if record else 0,
+        "award_count": record["award_count"] if record else 0,
+        "budget_execution_count": record["budget_execution_count"] if record else 0,
         "person_count": (
             0 if should_hide_person_entities() else (record["person_count"] if record else 0)
         ),
-        "company_count": record["company_count"] if record else 0,
+        "company_count": (
+            (record["provider_count"] if record and record["provider_count"] is not None else 0)
+            or (record["company_count"] if record else 0)
+        ),
         "health_count": record["health_count"] if record else 0,
         "finance_count": record["finance_count"] if record else 0,
-        "contract_count": record["contract_count"] if record else 0,
+        "contract_count": (
+            (record["award_count"] if record and record["award_count"] is not None else 0)
+            or (record["contract_count"] if record else 0)
+        ),
         "sanction_count": record["sanction_count"] if record else 0,
         "election_count": record["election_count"] if record else 0,
         "amendment_count": record["amendment_count"] if record else 0,

@@ -7,7 +7,26 @@ WHERE NONE(label IN node_labels WHERE label IN ['User', 'Investigation', 'Annota
        OR ANY(label IN node_labels WHERE toLower(label) = $entity_type))
 RETURN node, score, node_labels,
        elementId(node) AS node_id,
-       coalesce(node.cpf, node.cnpj, node.contract_id, node.sanction_id, node.amendment_id, node.cnes_code, node.finance_id, node.embargo_id, node.school_id, node.convenio_id, node.stats_id, elementId(node)) AS document_id
+       coalesce(
+         node.ruc,
+         node.entity_id,
+         node.process_id,
+         node.seace_code,
+         node.award_id,
+         node.execution_id,
+         node.cpf,
+         node.cnpj,
+         node.contract_id,
+         node.sanction_id,
+         node.amendment_id,
+         node.cnes_code,
+         node.finance_id,
+         node.embargo_id,
+         node.school_id,
+         node.convenio_id,
+         node.stats_id,
+         elementId(node)
+       ) AS document_id
 ORDER BY score DESC
 SKIP $skip
 LIMIT $limit

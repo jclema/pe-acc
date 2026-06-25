@@ -11,9 +11,9 @@ interface InsightCardProps {
 }
 
 function formatMoney(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
+  return new Intl.NumberFormat("es-PE", {
     style: "currency",
-    currency: "BRL",
+    currency: "PEN",
     notation: "compact",
   }).format(value);
 }

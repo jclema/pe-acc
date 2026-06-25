@@ -88,7 +88,7 @@ describe("Patterns", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/selecione uma entidade/i),
+        screen.getByText(/selecciona una entidad/i),
       ).toBeInTheDocument();
     });
   });
@@ -108,7 +108,7 @@ describe("Patterns", () => {
     renderPatterns();
 
     await waitFor(() => {
-      expect(screen.getByText(/erro ao carregar/i)).toBeInTheDocument();
+      expect(screen.getByText(/error al cargar/i)).toBeInTheDocument();
     });
   });
 
@@ -118,7 +118,7 @@ describe("Patterns", () => {
     renderPatterns("e1");
 
     await waitFor(() => {
-      expect(screen.getByText(/erro ao analisar/i)).toBeInTheDocument();
+      expect(screen.getByText(/error al analizar/i)).toBeInTheDocument();
     });
   });
 

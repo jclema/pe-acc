@@ -6,6 +6,7 @@ import "@/i18n";
 
 // Mock API client
 vi.mock("@/api/client", () => ({
+  getEntity: vi.fn(),
   getEntityByElementId: vi.fn(),
   getEntityPatterns: vi.fn(),
   getBaseline: vi.fn(),
@@ -115,9 +116,10 @@ vi.mock("@/stores/graphExplorer", () => ({
   }),
 }));
 
-import { getEntityByElementId, getEntityPatterns, getBaseline } from "@/api/client";
+import { getEntity, getEntityByElementId, getEntityPatterns, getBaseline } from "@/api/client";
 import { EntityAnalysis } from "./EntityAnalysis";
 
+const mockGetPublicEntity = vi.mocked(getEntity);
 const mockGetEntity = vi.mocked(getEntityByElementId);
 const mockGetPatterns = vi.mocked(getEntityPatterns);
 const mockGetBaseline = vi.mocked(getBaseline);
@@ -135,6 +137,13 @@ function renderEntityAnalysis(entityId = "entity-42") {
 describe("EntityAnalysis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetPublicEntity.mockResolvedValue({
+      id: "20123456789",
+      type: "provider",
+      properties: { ruc: "20123456789", legal_name: "Constructora Andina S.A.C." },
+      sources: [{ database: "sunat_ruc" }],
+      is_pep: false,
+    });
     mockGetPatterns.mockResolvedValue({ entity_id: null, patterns: [], total: 0 });
     mockGetBaseline.mockResolvedValue({ entity_id: "entity-42", comparisons: [], total: 0 });
   });
@@ -151,7 +160,7 @@ describe("EntityAnalysis", () => {
     renderEntityAnalysis();
 
     await waitFor(() => {
-      expect(screen.getByText("Entidade n\u00E3o encontrada.")).toBeInTheDocument();
+      expect(screen.getByText("Entidad no encontrada.")).toBeInTheDocument();
     });
   });
 
@@ -171,5 +180,13 @@ describe("EntityAnalysis", () => {
     });
 
     expect(screen.getByText("Entity: entity-42")).toBeInTheDocument();
+  });
+
+  it("uses public lookup for peru provider identifiers", async () => {
+    renderEntityAnalysis("20123456789");
+
+    await waitFor(() => {
+      expect(mockGetPublicEntity).toHaveBeenCalledWith("20123456789");
+    });
   });
 });

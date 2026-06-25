@@ -46,7 +46,7 @@ describe("EntityDetail", () => {
 
     render(<EntityDetail entityId="e1" onClose={vi.fn()} />);
 
-    expect(screen.getByText(/carregando/i)).toBeInTheDocument();
+    expect(screen.getByText(/cargando/i)).toBeInTheDocument();
 
     await act(async () => {
       resolve!(sampleEntity);
@@ -59,7 +59,7 @@ describe("EntityDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("João Silva")).toBeInTheDocument();
     });
-    expect(screen.getByText("Pessoa")).toBeInTheDocument();
+    expect(screen.getByText("Persona")).toBeInTheDocument();
     expect(screen.getByText("***.***.***-34")).toBeInTheDocument();
   });
 

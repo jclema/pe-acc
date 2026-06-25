@@ -1,4 +1,4 @@
-.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all link-persons bootstrap-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
+.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
 
 # ── Development ─────────────────────────────────────────
 setup-env:
@@ -65,6 +65,20 @@ download-sanctions:
 etl-sanctions:
 	cd etl && uv run bracc-etl run --source sanctions --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data
 
+etl-pe-sunat-ruc:
+	cd etl && uv run bracc-etl run --source pe_sunat_ruc --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data
+
+etl-pe-osce-sanctions:
+	cd etl && uv run bracc-etl run --source pe_osce_sanctions --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data
+
+etl-pe-seace-conosce:
+	cd etl && uv run bracc-etl run --source pe_seace_conosce --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data
+
+etl-pe-demo: etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce
+
+prepare-pe-demo-data:
+	bash scripts/prepare_pe_demo_data.sh
+
 # ── All Data ──────────────────────────────────────────
 download-all: download-cnpj download-tse download-transparencia download-sanctions
 
@@ -125,6 +139,9 @@ neutrality:
 # ── Bootstrap ─────────────────────────────────────────────
 bootstrap-demo:
 	bash scripts/bootstrap_public_demo.sh --profile demo
+
+bootstrap-pe-demo:
+	bash scripts/bootstrap_pe_demo.sh
 
 bootstrap-full:
 	bash scripts/bootstrap_public_demo.sh --profile full

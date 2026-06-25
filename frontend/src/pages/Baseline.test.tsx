@@ -37,14 +37,14 @@ describe("Baseline", () => {
     mockUseBaseline.mockReturnValue({ data: null, loading: false, error: null });
     renderBaseline();
 
-    expect(screen.getByText("Compara\u00E7\u00E3o com Pares")).toBeInTheDocument();
+    expect(screen.getByText("Comparación con pares")).toBeInTheDocument();
   });
 
   it("shows no-data message when no entityId", () => {
     mockUseBaseline.mockReturnValue({ data: null, loading: false, error: null });
     renderBaseline();
 
-    expect(screen.getByText("Sem dados de compara\u00E7\u00E3o.")).toBeInTheDocument();
+    expect(screen.getByText("Sin datos de comparación.")).toBeInTheDocument();
   });
 
   it("shows comparison table when data is available", () => {

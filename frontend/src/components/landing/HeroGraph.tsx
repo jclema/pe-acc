@@ -19,11 +19,11 @@ const nodes: GraphNode[] = [
   { x: 200, y: 140, r: 14, color: "#E07A5F", label: "Empresa X" },
   { x: 600, y: 130, r: 14, color: "#E07A5F", label: "Empresa Y" },
   { x: 120, y: 60, r: 10, color: "#F2CC8F", label: "Contrato" },
-  { x: 300, y: 220, r: 12, color: "#81B29A", label: "Doação" },
-  { x: 500, y: 210, r: 12, color: "#E56B6F", label: "Sanção" },
-  { x: 680, y: 60, r: 10, color: "#B8A9C9", label: "Emenda" },
-  { x: 100, y: 200, r: 8, color: "#4EA8DE", label: "Pessoa B" },
-  { x: 700, y: 200, r: 8, color: "#4EA8DE", label: "Pessoa C" },
+  { x: 300, y: 220, r: 12, color: "#81B29A", label: "Donación" },
+  { x: 500, y: 210, r: 12, color: "#E56B6F", label: "Sanción" },
+  { x: 680, y: 60, r: 10, color: "#B8A9C9", label: "Enmienda" },
+  { x: 100, y: 200, r: 8, color: "#4EA8DE", label: "Persona B" },
+  { x: 700, y: 200, r: 8, color: "#4EA8DE", label: "Persona C" },
   { x: 400, y: 260, r: 10, color: "#3B82F6", label: "BNDES" },
 ];
 

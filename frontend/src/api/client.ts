@@ -180,6 +180,18 @@ export function getGraphData(
   return apiFetch<GraphData>(`/api/v1/graph/${encodeURIComponent(entityId)}?${params}`, { signal });
 }
 
+export function getPublicProviderGraph(
+  ruc: string,
+  depth = 1,
+  signal?: AbortSignal,
+): Promise<GraphData> {
+  const params = new URLSearchParams({ depth: String(depth) });
+  return apiFetch<GraphData>(
+    `/api/v1/public/graph/proveedor/${encodeURIComponent(ruc)}?${params}`,
+    { signal },
+  );
+}
+
 // --- Baseline ---
 
 export interface BaselineMetrics {

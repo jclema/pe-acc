@@ -15,13 +15,9 @@ from bracc.middleware.rate_limit import limiter
 from bracc.middleware.security_headers import SecurityHeadersMiddleware
 from bracc.routers import (
     auth,
-    baseline,
-    emendas,
     entity,
     graph,
-    investigation,
     meta,
-    patterns,
     public,
     search,
 )
@@ -57,8 +53,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="BR-ACC API",
-    description="Brazilian public data graph analysis tool",
+    title="PE-ACC API",
+    description="Grafo publico de integridad y contrataciones para Peru",
     version="0.1.0",
     lifespan=lifespan,
     redirect_slashes=False,
@@ -84,11 +80,6 @@ app.include_router(auth.router)
 app.include_router(entity.router)
 app.include_router(search.router)
 app.include_router(graph.router)
-app.include_router(patterns.router)
-app.include_router(baseline.router)
-app.include_router(investigation.router)
-app.include_router(investigation.shared_router)
-app.include_router(emendas.router)
 
 
 @app.get("/health")

@@ -1,0 +1,4 @@
+ruc,provider_name,sanction_id,sanction_type,sanction_reason,start_date,end_date,source_url,extraction_date
+20123456789,Constructora Andina S.A.C.,OSCE-001,INHABILITACION,Presentacion de informacion falsa,15/03/2026,15/09/2026,https://example.gob.pe/osce/001,2026-04-01
+20654321987,Servicios Civicos del Peru E.I.R.L.,OSCE-002,SANCION,Incumplimiento contractual,2026-02-10,,https://example.gob.pe/osce/002,2026-04-01
+123,Proveedor Invalido,OSCE-003,SANCION,Documento incompleto,2026-01-01,,https://example.gob.pe/osce/003,2026-04-01

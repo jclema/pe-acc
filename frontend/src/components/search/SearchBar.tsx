@@ -42,9 +42,12 @@ export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
         aria-label={t("search.filterType")}
       >
         <option value="all">{t("search.typeAll")}</option>
-        <option value="person">{t("entity.person")}</option>
+        <option value="provider">{t("entity.provider")}</option>
         <option value="company">{t("entity.company")}</option>
-        <option value="contract">{t("entity.contract")}</option>
+        <option value="entity">{t("entity.entity")}</option>
+        <option value="procurementprocess">{t("entity.procurementprocess")}</option>
+        <option value="award">{t("entity.award")}</option>
+        <option value="sanction">{t("entity.sanction")}</option>
       </select>
       <button type="submit" className={styles.button} disabled={isLoading}>
         {isLoading ? t("common.loading") : t("search.button")}

@@ -31,6 +31,7 @@ router = APIRouter(prefix="/api/v1/entity", tags=["entity"])
 
 CPF_PATTERN = re.compile(r"^\d{11}$")
 CNPJ_PATTERN = re.compile(r"^\d{14}$")
+RUC_PATTERN = re.compile(r"^\d{11}$")
 
 
 def _clean_identifier(raw: str) -> str:
@@ -104,11 +105,13 @@ async def get_entity(
     enforce_entity_lookup_policy(cpf_or_cnpj)
     identifier = _clean_identifier(cpf_or_cnpj)
 
-    if not CPF_PATTERN.match(identifier) and not CNPJ_PATTERN.match(identifier):
-        raise HTTPException(status_code=400, detail="Invalid CPF or CNPJ format")
+    if not CPF_PATTERN.match(identifier) and not CNPJ_PATTERN.match(identifier) and not RUC_PATTERN.match(identifier):
+        raise HTTPException(status_code=400, detail="Invalid CPF, CNPJ, or RUC format")
 
     if CPF_PATTERN.match(identifier):
         identifier_formatted = _format_cpf(identifier)
+    elif RUC_PATTERN.match(identifier):
+        identifier_formatted = identifier
     else:
         identifier_formatted = _format_cnpj(identifier)
 

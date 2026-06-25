@@ -34,7 +34,7 @@ export function Patterns() {
     }
     setLoading(true);
     setError(null);
-    const lang = i18n.language === "pt-BR" ? "pt" : "en";
+    const lang = i18n.language === "es-PE" ? "pt" : "en";
     getEntityPatterns(entityId, lang)
       .then((res) => setResults(res.patterns))
       .catch(() => setError(t("patterns.runError")))

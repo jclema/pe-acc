@@ -77,7 +77,7 @@ describe("GraphExplorer", () => {
     mockUseGraphData.mockReturnValue({ data: null, loading: false, error: null });
     renderGraphExplorer();
 
-    expect(screen.getByText("Nenhum dado de grafo dispon\u00EDvel.")).toBeInTheDocument();
+    expect(screen.getByText("No hay datos de grafo disponibles.")).toBeInTheDocument();
   });
 
   it("shows graph canvas when data is available", () => {

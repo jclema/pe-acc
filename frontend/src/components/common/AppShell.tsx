@@ -86,7 +86,7 @@ export function AppShell() {
   }, []);
 
   const toggleLang = useCallback(() => {
-    const next = i18n.language === "pt-BR" ? "en" : "pt-BR";
+    const next = i18n.language === "es-PE" ? "en" : "es-PE";
     i18n.changeLanguage(next);
   }, [i18n]);
 
@@ -146,7 +146,7 @@ export function AppShell() {
       <nav className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ""}`}>
         <div className={styles.sidebarHeader}>
           <Link to="/app" className={styles.logo}>
-            {sidebarCollapsed ? "B" : "BR-ACC"}
+            {sidebarCollapsed ? "P" : "PE-ACC"}
           </Link>
         </div>
 
@@ -175,8 +175,8 @@ export function AppShell() {
           <button className={styles.langToggle} onClick={toggleTheme} title={theme === "dark" ? t("nav.themeLight") : t("nav.themeDark")}>
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
           </button>
-          <button className={styles.langToggle} onClick={toggleLang} title={i18n.language === "pt-BR" ? "English" : "Portugues"}>
-            {i18n.language === "pt-BR" ? "EN" : "PT"}
+          <button className={styles.langToggle} onClick={toggleLang} title={i18n.language === "es-PE" ? "English" : "Español"}>
+            {i18n.language === "es-PE" ? "EN" : "ES"}
           </button>
           {user && !sidebarCollapsed && (
             <span className={styles.userEmail}>{user.email}</span>

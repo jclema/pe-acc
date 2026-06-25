@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Network, Users, Clock, Download } from "lucide-react";
+import { Network, Users } from "lucide-react";
 
 import styles from "./AnalysisNav.module.css";
 
@@ -14,8 +14,6 @@ interface AnalysisNavProps {
 const TABS: { id: AnalysisTab; icon: typeof Network; labelKey: string }[] = [
   { id: "graph", icon: Network, labelKey: "analysis.graph" },
   { id: "connections", icon: Users, labelKey: "analysis.connections" },
-  { id: "timeline", icon: Clock, labelKey: "analysis.timeline" },
-  { id: "export", icon: Download, labelKey: "analysis.export" },
 ];
 
 function AnalysisNavInner({ activeTab, onTabChange }: AnalysisNavProps) {
