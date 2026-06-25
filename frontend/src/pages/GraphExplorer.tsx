@@ -20,10 +20,16 @@ export function GraphExplorer() {
   const { depth, enabledTypes, enabledRelTypes, selectedNodeIds, sidebarCollapsed, detailPanelOpen, reset } = store;
 
   const { data, loading, error } = useGraphData(entityId, depth);
+  const graphCenterId = data?.center_id ?? entityId ?? null;
 
   useEffect(() => {
     reset();
   }, [entityId, reset]);
+
+  useEffect(() => {
+    if (!data || !graphCenterId || selectedNodeIds.size > 0) return;
+    store.selectNode(graphCenterId);
+  }, [data, graphCenterId, selectedNodeIds.size, store]);
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -87,10 +93,10 @@ export function GraphExplorer() {
               </div>
             )}
             {error && <p className={styles.status}>{error}</p>}
-            {data && entityId && (
+            {data && graphCenterId && (
               <GraphCanvas
                 data={data}
-                centerId={entityId}
+                centerId={graphCenterId}
                 enabledTypes={enabledTypes}
                 enabledRelTypes={enabledRelTypes}
                 hiddenNodeIds={store.hiddenNodeIds}

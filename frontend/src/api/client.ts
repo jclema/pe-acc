@@ -102,6 +102,7 @@ export interface GraphEdge {
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+  center_id?: string | null;
 }
 
 export function searchEntities(
