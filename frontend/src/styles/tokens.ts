@@ -44,6 +44,10 @@ export const dataColors = {
 export type DataEntityType = keyof typeof dataColors;
 
 export const relationshipColors: Record<string, string> = {
+  HAS_SANCTION: "#E56B6F",
+  PUBLISHED: "#3B82F6",
+  HAS_AWARD: "#F2CC8F",
+  WINNER: "#84CC16",
   SOCIO_DE: "#4EA8DE",
   DOOU: "#81B29A",
   CANDIDATO_EM: "#81B29A",

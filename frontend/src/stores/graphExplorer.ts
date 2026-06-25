@@ -34,6 +34,11 @@ interface GraphExplorerState {
 }
 
 const INITIAL_ENTITY_TYPES = new Set([
+  "provider",
+  "entity",
+  "procurementprocess",
+  "award",
+  "budgetexecution",
   "person",
   "company",
   "election",
@@ -67,6 +72,10 @@ const INITIAL_ENTITY_TYPES = new Set([
 ]);
 
 const INITIAL_REL_TYPES = new Set([
+  "HAS_SANCTION",
+  "PUBLISHED",
+  "HAS_AWARD",
+  "WINNER",
   "SOCIO_DE",
   "DOOU",
   "CANDIDATO_EM",
@@ -152,9 +161,9 @@ export const useGraphExplorerStore = create<GraphExplorerState>((set) => ({
   selectNode: (id) =>
     set(() => {
       if (id === null) {
-        return { selectedNodeIds: new Set<string>() };
+        return { selectedNodeIds: new Set<string>(), detailPanelOpen: false };
       }
-      return { selectedNodeIds: new Set([id]) };
+      return { selectedNodeIds: new Set([id]), detailPanelOpen: true };
     }),
 
   toggleNodeSelection: (id) =>
