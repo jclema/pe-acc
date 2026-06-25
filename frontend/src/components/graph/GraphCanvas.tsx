@@ -277,7 +277,14 @@ function GraphCanvasInner({
             const rect = containerRef.current?.getBoundingClientRect();
             const ox = rect?.left ?? 0;
             const oy = rect?.top ?? 0;
-            setTooltip({ node, x: screen.x - ox + 12, y: screen.y - oy - 8 });
+            setTooltip({
+              node: {
+                ...node,
+                connectionCount: connectionCountsRef.current.get(node.id) ?? 0,
+              },
+              x: screen.x - ox + 12,
+              y: screen.y - oy - 8,
+            });
           }
         }, 200);
       } else {
@@ -468,6 +475,8 @@ function GraphCanvasInner({
               type: tooltip.node.type,
               connectionCount: tooltip.node.connectionCount ?? 0,
               document_id: tooltip.node.document_id ?? undefined,
+              properties: (tooltip.node as GraphNodeObject & { properties?: Record<string, unknown> }).properties,
+              sources: (tooltip.node as GraphNodeObject & { sources?: Array<{ database: string }> }).sources,
             }}
             x={tooltip.x}
             y={tooltip.y}

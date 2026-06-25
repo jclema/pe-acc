@@ -277,29 +277,45 @@ async def public_graph_for_provider(
             for key, value in props.items()
             if key not in _CPF_KEYS
         }
-        label = (
-            clean_props.get("legal_name")
-            or clean_props.get("trade_name")
-            or clean_props.get("name")
-            or clean_props.get("title")
-            or clean_props.get("entity_name")
-            or clean_props.get("ruc")
-            or node_id
-        )
-        document_id = (
-            clean_props.get("ruc")
-            or clean_props.get("entity_id")
-            or clean_props.get("process_id")
-            or clean_props.get("seace_code")
-            or clean_props.get("award_id")
-            or clean_props.get("execution_id")
-            or clean_props.get("sanction_id")
-        )
+        node_type = labels[0].lower() if labels else "unknown"
+
+        if node_type == "sanction":
+            label = (
+                clean_props.get("type")
+                or clean_props.get("resolution_number")
+                or clean_props.get("sanction_id")
+                or "Sancion"
+            )
+            document_id = (
+                clean_props.get("resolution_number")
+                or clean_props.get("sanction_id")
+                or clean_props.get("sanction_source")
+            )
+        else:
+            label = (
+                clean_props.get("legal_name")
+                or clean_props.get("trade_name")
+                or clean_props.get("name")
+                or clean_props.get("title")
+                or clean_props.get("entity_name")
+                or clean_props.get("provider_name")
+                or clean_props.get("ruc")
+                or node_id
+            )
+            document_id = (
+                clean_props.get("ruc")
+                or clean_props.get("entity_id")
+                or clean_props.get("process_id")
+                or clean_props.get("seace_code")
+                or clean_props.get("award_id")
+                or clean_props.get("execution_id")
+                or clean_props.get("sanction_id")
+            )
         nodes.append(
             GraphNode(
                 id=node_id,
                 label=str(label),
-                type=labels[0].lower() if labels else "unknown",
+                type=node_type,
                 document_id=str(document_id) if document_id else None,
                 properties=_slim_props(clean_props),
                 sources=sources,

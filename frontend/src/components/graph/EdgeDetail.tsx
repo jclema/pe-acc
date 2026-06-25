@@ -40,7 +40,7 @@ export function EdgeDetail({ edge, onClose }: EdgeDetailProps) {
         &times;
       </button>
 
-      <h3 className={styles.type}>{edge.type}</h3>
+      <h3 className={styles.type}>{t(`relationship.${edge.type}`, edge.type)}</h3>
 
       <dl className={styles.fields}>
         <dt>{t("graph.edge.source")}</dt>

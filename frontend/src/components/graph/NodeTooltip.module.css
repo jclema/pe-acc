@@ -1,6 +1,6 @@
 .tooltip {
   position: absolute;
-  max-width: 240px;
+  max-width: 320px;
   padding: 6px 10px;
   background: rgba(6, 10, 7, 0.92);
   border: 1px solid rgba(148, 163, 154, 0.15);
@@ -10,9 +10,9 @@
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   transform: translateY(-100%);
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .header {
@@ -41,14 +41,32 @@
   font-size: 11px;
   color: var(--text-primary);
   font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .document {
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--text-secondary);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.meta strong {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .connections {

@@ -66,6 +66,15 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
     ].filter(([, value]) => value != null && value !== "")
     : [];
 
+  const sanctionHighlights = entity && entity.type === "sanction"
+    ? [
+      ["Tipo", entity.properties.type],
+      ["Resolución", entity.properties.resolution_number ?? entity.properties.sanction_id],
+      ["Vigencia", [entity.properties.date_start, entity.properties.date_end].filter(Boolean).join(" - ") || entity.properties.status],
+      ["Fuente", entity.properties.sanction_source ?? entity.sources[0]?.database],
+    ].filter(([, value]) => value != null && value !== "")
+    : [];
+
   const otherPairs = entity
     ? Object.entries(entity.properties).filter(
       ([key]) => ![
@@ -102,6 +111,7 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
               entity.properties.legal_name
               ?? entity.properties.trade_name
               ?? entity.properties.name
+              ?? entity.properties.type
               ?? entity.properties.razao_social
               ?? entity.properties.nome
               ?? entity.properties.title
@@ -109,6 +119,20 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
               ?? "N/A",
             )}
           </h3>
+
+          {sanctionHighlights.length > 0 && (
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Resumen de sanción</span>
+              <div className={styles.properties}>
+                {sanctionHighlights.map(([key, value]) => (
+                  <div key={`${key}-${String(value)}`} className={styles.property}>
+                    <span className={styles.propKey}>{key}</span>
+                    <span className={styles.propValue}>{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {identityPairs.length > 0 && (
             <div className={styles.section}>
