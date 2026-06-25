@@ -73,6 +73,26 @@ URLs locales:
 - API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 - Neo4j Browser: [http://localhost:7474](http://localhost:7474)
 
+## Acceso demo
+
+Para evitar depender del registro manual, el proyecto incluye un usuario demo fijo para el frontend:
+
+- email: `demo@pe-acc.local`
+- contraseña: `peacc-demo-2026`
+- código de invitación para nuevos registros manuales: `demo`
+
+Si el usuario demo no existe todavía en tu instancia local:
+
+```bash
+make ensure-demo-user
+```
+
+El bootstrap de Perú también lo crea automáticamente:
+
+```bash
+make bootstrap-pe-demo
+```
+
 ## Datos reales en este repo
 
 El proyecto ya incluye la estructura para trabajar con fuentes peruanas:

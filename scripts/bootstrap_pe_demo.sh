@@ -53,6 +53,9 @@ if ! curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "Ensuring fixed demo user..."
+bash "${ROOT_DIR}/scripts/ensure_demo_user.sh"
+
 echo "Preparing Peru demo CSV inputs..."
 bash "${ROOT_DIR}/scripts/prepare_pe_demo_data.sh"
 

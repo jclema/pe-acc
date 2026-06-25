@@ -1,4 +1,4 @@
-.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
+.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data ensure-demo-user link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
 
 # ── Development ─────────────────────────────────────────
 setup-env:
@@ -78,6 +78,9 @@ etl-pe-demo: etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce
 
 prepare-pe-demo-data:
 	bash scripts/prepare_pe_demo_data.sh
+
+ensure-demo-user:
+	bash scripts/ensure_demo_user.sh
 
 # ── All Data ──────────────────────────────────────────
 download-all: download-cnpj download-tse download-transparencia download-sanctions
