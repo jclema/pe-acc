@@ -12,6 +12,31 @@ interface EntityDetailProps {
   onClose: () => void;
 }
 
+function formatSanctionType(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+
+  const labels: Record<string, string> = {
+    TRIBUNAL_CONTRATACIONES: "Sancion del Tribunal de Contrataciones",
+    MANDATO_JUDICIAL: "Inhabilitacion por mandato judicial",
+    INHABILITACION: "Inhabilitacion vigente",
+  };
+
+  return labels[value] ?? value.replaceAll("_", " ");
+}
+
+function formatSourceLabel(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+
+  const labels: Record<string, string> = {
+    osce_sanctions: "OSCE - Proveedores sancionados",
+    OSCE_TCP: "OSCE - Tribunal de Contrataciones",
+    PODER_JUDICIAL: "Poder Judicial",
+    pe_sunat_ruc: "SUNAT - Padron RUC",
+  };
+
+  return labels[value] ?? value.replaceAll("_", " ");
+}
+
 export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
   const { t } = useTranslation();
   const [entity, setEntity] = useState<EntityDetailData | null>(null);
@@ -68,10 +93,10 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
 
   const sanctionHighlights = entity && entity.type === "sanction"
     ? [
-      ["Tipo", entity.properties.type],
+      ["Tipo", formatSanctionType(entity.properties.type)],
       ["Resolución", entity.properties.resolution_number ?? entity.properties.sanction_id],
       ["Vigencia", [entity.properties.date_start, entity.properties.date_end].filter(Boolean).join(" - ") || entity.properties.status],
-      ["Fuente", entity.properties.sanction_source ?? entity.sources[0]?.database],
+      ["Fuente", formatSourceLabel(entity.properties.sanction_source) ?? formatSourceLabel(entity.sources[0]?.database)],
     ].filter(([, value]) => value != null && value !== "")
     : [];
 

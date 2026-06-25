@@ -93,6 +93,82 @@ El bootstrap de Perú también lo crea automáticamente:
 make bootstrap-pe-demo
 ```
 
+## Pruebas manuales
+
+La forma más rápida de validar el MVP hoy es usando casos reales ya cargados en el grafo.
+
+### Caso 1. Proveedor con sanción visible
+
+- `RUC`: `20100994128`
+- `Proveedor`: `CONSTRUCTORA DOS DE MAYO S.A.`
+
+Qué deberías poder probar en [http://localhost:3000](http://localhost:3000):
+
+1. iniciar sesión con el usuario demo
+2. buscar `20100994128`
+3. abrir la ficha del proveedor
+4. entrar al explorador del grafo
+5. pasar el mouse sobre el nodo de sanción
+6. hacer click en el nodo y en la arista
+
+Qué deberías ver:
+
+- nodo del proveedor y nodo de sanción conectados
+- tooltip ampliado para la sanción
+- `Tipo` en lenguaje más humano
+- `Detalle` cuando exista motivo de sanción
+- `Resolución`, `Vigencia` y `Fuente`
+- detalle de arista con texto más claro, por ejemplo `Proveedor sancionado`
+
+### Caso 2. Proveedor con sanción judicial
+
+- `RUC`: `10040039711`
+- `Proveedor`: `BARRETO MARCELO TEODORO`
+
+Qué valida:
+
+- cruce `Provider -> HAS_SANCTION -> Sanction`
+- lectura de sanciones judiciales
+- comportamiento del tooltip y panel de detalle en otro tipo de sanción
+
+### Validación por Neo4j Browser
+
+En [http://localhost:7474](http://localhost:7474):
+
+- usuario: `neo4j`
+- contraseña: `changeme`
+
+Consulta útil:
+
+```cypher
+MATCH (p:Provider)-[:HAS_SANCTION]->(s:Sanction)
+RETURN p.ruc, p.legal_name, s.sanction_id, s.type, s.sanction_source
+LIMIT 10;
+```
+
+Conteo de relaciones:
+
+```cypher
+MATCH (:Provider)-[r:HAS_SANCTION]->(:Sanction)
+RETURN count(r) AS total_relaciones;
+```
+
+### Validación por API
+
+- [http://localhost:8000/health](http://localhost:8000/health)
+- [http://localhost:8000/docs](http://localhost:8000/docs)
+
+Ruta útil para inspección:
+
+- `GET /api/v1/public/graph/proveedor/{ruc}`
+
+### Si algo no se ve bien en la UI
+
+- haz recarga fuerte del navegador
+- confirma que el stack esté sano con `docker compose ps`
+- revisa logs con `docker compose logs -f frontend` y `docker compose logs -f api`
+- vuelve a probar primero el caso `20100994128`, que es hoy el caso demo principal
+
 ## Datos reales en este repo
 
 El proyecto ya incluye la estructura para trabajar con fuentes peruanas:
