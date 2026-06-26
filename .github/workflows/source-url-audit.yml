@@ -27,7 +27,7 @@ jobs:
       - name: Run source URL audit
         run: |
           python scripts/check_source_urls.py \
-            --registry-path docs/source_registry_br_v1.csv \
+            --registry-path docs/source_registry_pe_v1.csv \
             --exceptions-path config/source_url_exceptions.yml \
             --output audit-results/source-url-audit/source-url-audit.json
 

@@ -21,7 +21,7 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.11
     UTC = timezone.utc  # noqa: UP017
 
-USER_AGENT = "Mozilla/5.0 (compatible; BRACC-source-audit/1.0)"
+USER_AGENT = "Mozilla/5.0 (compatible; PEACC-source-audit/1.0)"
 
 
 @dataclass(frozen=True)
@@ -144,8 +144,8 @@ def _implementation_state_for(source_id: str, rows: list[dict[str, str]]) -> str
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Audit source URLs in source_registry_br_v1.csv")
-    parser.add_argument("--registry-path", default="docs/source_registry_br_v1.csv")
+    parser = argparse.ArgumentParser(description="Audit source URLs in source_registry_pe_v1.csv")
+    parser.add_argument("--registry-path", default="docs/source_registry_pe_v1.csv")
     parser.add_argument("--exceptions-path", default="config/source_url_exceptions.yml")
     parser.add_argument("--output", default="")
     parser.add_argument("--timeout-sec", type=float, default=8.0)

@@ -1,6 +1,6 @@
 # Public Scope
 
-This page defines the public boundary of `brunoclz/br-acc`.
+This page defines the public boundary of `jclema/pe-acc`.
 
 ## Included In Public Repo
 
@@ -21,12 +21,12 @@ This page defines the public boundary of `brunoclz/br-acc`.
 
 | Mode | What you get | Command |
 |---|---|---|
-| `demo_local` | Deterministic local stack + seeded demo graph | `make bootstrap-demo` |
+| `demo_local` | Deterministic local PE-ACC stack + seeded Peru demo graph | `make bootstrap-pe-demo` |
 | `byo_ingestion` | Full ETL run path using your own data downloads | `make bootstrap-all` |
 | `reference_production_snapshot` | Timestamped production counters for transparency | `docs/reference_metrics.md` |
 
 ## Transparency Notes
 
-- Source availability and load status are tracked in `docs/source_registry_br_v1.csv`.
+- Peru source availability and load status are tracked in `docs/source_registry_pe_v1.csv`.
 - Registry-backed summary is generated into `docs/data-sources.md`.
 - URL reliability is audited by `scripts/check_source_urls.py`.

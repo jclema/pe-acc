@@ -320,6 +320,17 @@ docs/       documentación y registro de fuentes
 data/       datos raw, normalizados y demo
 ```
 
+### Trabajo con Codex
+
+Este repo incluye un arnés explícito para futuras ejecuciones de Codex:
+
+- [AGENTS.md](AGENTS.md): mapa corto del proyecto, comandos, límites de seguridad y reglas de trabajo.
+- [docs/agent/index.md](docs/agent/index.md): sistema de registro para arquitectura, playbooks, gates de calidad y checklist de revisión.
+- `make agent-check-fast`: validación rápida para cambios comunes.
+- `make agent-check-full`: gate amplio antes de PRs o cambios cross-stack.
+- `make agent-bootstrap-demo`: demo Perú end-to-end.
+- `make agent-health`: estado local del stack y URLs principales.
+
 ## Cómo aportar
 
 Hay varias formas de contribuir sin meterse de frente a toda la arquitectura:

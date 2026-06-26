@@ -92,7 +92,8 @@ data/tse/
 # Local MCP runtime config (keep example only)
 .mcp.json
 
-# Internal assistant instruction files (must never be published)
+# Internal assistant instruction files (must never be published).
+# The root AGENTS.md is the public Codex project map and should be tracked.
 CLAUDE.md
-AGENTS.md
 AGENTS*.md
+!AGENTS.md

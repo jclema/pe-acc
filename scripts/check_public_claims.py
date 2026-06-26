@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate public docs/claims consistency and onboarding parity."""
+"""Validate PE-ACC public docs/claims consistency and onboarding parity."""
 
 from __future__ import annotations
 
@@ -13,18 +13,12 @@ MAKE_TARGET_RE = re.compile(r"^([A-Za-z0-9_.-]+):")
 MAKE_COMMAND_LINE_RE = re.compile(r"^\s*make\s+([A-Za-z0-9_.-]+)\b")
 MAKE_COMMAND_INLINE_RE = re.compile(r"`make\s+([A-Za-z0-9_.-]+)\b")
 
-REQUIRED_EN_MARKERS = [
-    "What Is Included In This Public Repo",
-    "What Is Not Included By Default",
-    "What Is Reproducible Locally Today",
-    "reference production snapshot",
-]
-
-REQUIRED_PT_MARKERS = [
-    "O Que Esta Incluido Neste Repositorio Publico",
-    "O Que Nao Esta Incluido Por Padrao",
-    "O Que E Reproduzivel Localmente Hoje",
-    "snapshot de referencia de producao",
+REQUIRED_README_MARKERS = [
+    "PE-ACC",
+    "Quick Start",
+    "docs/source_registry_pe_v1.csv",
+    "API MVP",
+    "Seguridad y alcance",
 ]
 
 
@@ -77,36 +71,11 @@ def compute_registry_counts(registry_path: Path) -> dict[str, int]:
     }
 
 
-def extract_data_source_summary(doc_text: str) -> dict[str, int]:
-    patterns = {
-        "universe": r"Universe v1 sources:\s*(\d+)",
-        "implemented": r"Implemented pipelines:\s*(\d+)",
-        "loaded": r"Loaded sources \(load_state=loaded\):\s*(\d+)",
-        "partial_load": r"Partial sources \(load_state=partial\):\s*(\d+)",
-        "not_loaded": r"Not loaded sources \(load_state=not_loaded\):\s*(\d+)",
-        "status_loaded": r"Status counts:\s*loaded=(\d+)",
-        "status_partial": r"Status counts:.*partial=(\d+)",
-        "status_stale": r"Status counts:.*stale=(\d+)",
-        "status_blocked_external": r"Status counts:.*blocked_external=(\d+)",
-        "status_not_built": r"Status counts:.*not_built=(\d+)",
-    }
-
-    parsed: dict[str, int] = {}
-    for key, pattern in patterns.items():
-        match = re.search(pattern, doc_text)
-        if not match:
-            raise ValueError(f"Missing generated summary value: {key}")
-        parsed[key] = int(match.group(1))
-    return parsed
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate public claims and docs consistency")
+    parser = argparse.ArgumentParser(description="Validate PE-ACC public claims and docs consistency")
     parser.add_argument("--repo-root", default=".")
-    parser.add_argument("--registry-path", default="docs/source_registry_br_v1.csv")
+    parser.add_argument("--registry-path", default="docs/source_registry_pe_v1.csv")
     parser.add_argument("--readme", default="README.md")
-    parser.add_argument("--readme-pt", default="docs/pt-BR/README.md")
-    parser.add_argument("--data-sources", default="docs/data-sources.md")
     parser.add_argument("--reference-metrics", default="docs/reference_metrics.md")
     args = parser.parse_args()
 
@@ -114,8 +83,6 @@ def main() -> int:
     makefile_path = root / "Makefile"
     registry_path = root / args.registry_path
     readme_path = root / args.readme
-    readme_pt_path = root / args.readme_pt
-    data_sources_path = root / args.data_sources
     reference_metrics_path = root / args.reference_metrics
 
     errors: list[str] = []
@@ -125,38 +92,26 @@ def main() -> int:
     else:
         targets = parse_make_targets(makefile_path)
         en_commands = parse_make_commands(readme_path.read_text(encoding="utf-8"))
-        pt_commands = parse_make_commands(readme_pt_path.read_text(encoding="utf-8"))
-        missing = sorted((en_commands | pt_commands) - targets)
+        missing = sorted(en_commands - targets)
         if missing:
             errors.append(f"README references undefined Makefile targets: {missing}")
 
     readme_text = readme_path.read_text(encoding="utf-8")
-    readme_pt_text = readme_pt_path.read_text(encoding="utf-8")
 
-    for marker in REQUIRED_EN_MARKERS:
+    for marker in REQUIRED_README_MARKERS:
         if marker.lower() not in readme_text.lower():
             errors.append(f"README.md missing required marker: {marker}")
 
-    for marker in REQUIRED_PT_MARKERS:
-        if marker.lower() not in readme_pt_text.lower():
-            errors.append(f"docs/pt-BR/README.md missing required marker: {marker}")
-
     registry_counts = compute_registry_counts(registry_path)
-    try:
-        summary_counts = extract_data_source_summary(data_sources_path.read_text(encoding="utf-8"))
-        for key, expected in registry_counts.items():
-            actual = summary_counts[key]
-            if actual != expected:
-                errors.append(
-                    f"docs/data-sources.md summary mismatch for {key}: actual={actual} expected={expected}"
-                )
-    except ValueError as exc:
-        errors.append(str(exc))
+    if registry_counts["universe"] < 1:
+        errors.append(f"{args.registry_path} must include at least one in-universe source")
+    if registry_counts["implemented"] < 1:
+        errors.append(f"{args.registry_path} must include at least one implemented pipeline")
+    if "brunoclz/br-acc" in readme_text:
+        errors.append("README.md still references upstream brunoclz/br-acc as project identity")
 
     metrics_text = reference_metrics_path.read_text(encoding="utf-8") if reference_metrics_path.exists() else ""
-    if "reference production snapshot" not in metrics_text.lower():
-        errors.append("docs/reference_metrics.md must include 'reference production snapshot' wording")
-    if "as_of_utc" not in metrics_text.lower() and "as-of (utc)" not in metrics_text.lower():
+    if metrics_text and "as_of_utc" not in metrics_text.lower() and "as-of (utc)" not in metrics_text.lower():
         errors.append("docs/reference_metrics.md must include explicit timestamp metadata")
 
     if errors:

@@ -1,4 +1,4 @@
-.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data ensure-demo-user link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
+.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check agent-check-fast agent-check-full agent-bootstrap-demo agent-health seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data ensure-demo-user link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
 
 # ── Development ─────────────────────────────────────────
 setup-env:
@@ -130,6 +130,23 @@ test-integration: test-integration-api test-integration-etl
 check: lint type-check test
 	@echo "All checks passed."
 
+# ── Agent harness ──────────────────────────────────────
+agent-check-fast: test-api test-etl test-frontend neutrality
+	@echo "Fast agent checks passed."
+
+agent-check-full: check neutrality check-public-claims check-source-urls
+	cd frontend && npm run build
+	@echo "Full agent checks passed."
+
+agent-bootstrap-demo: bootstrap-pe-demo
+
+agent-health:
+	docker compose ps
+	@python3 -c "import json, urllib.request; print(json.dumps(json.load(urllib.request.urlopen('http://localhost:8000/health', timeout=5)), sort_keys=True))"
+	@echo "Frontend: http://localhost:3000"
+	@echo "API docs: http://localhost:8000/docs"
+	@echo "Neo4j Browser: http://localhost:7474"
+
 # ── Neutrality audit ───────────────────────────────────
 neutrality:
 	@! grep -rn \
@@ -163,7 +180,7 @@ check-public-claims:
 	python3 scripts/check_public_claims.py --repo-root .
 
 check-source-urls:
-	python3 scripts/check_source_urls.py --registry-path docs/source_registry_br_v1.csv --exceptions-path config/source_url_exceptions.yml --output audit-results/public-trust/latest/source-url-audit.json
+	python3 scripts/check_source_urls.py --registry-path docs/source_registry_pe_v1.csv --exceptions-path config/source_url_exceptions.yml --output audit-results/public-trust/latest/source-url-audit.json
 
 check-pipeline-contracts:
 	python3 scripts/check_pipeline_contracts.py
