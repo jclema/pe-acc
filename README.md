@@ -335,7 +335,7 @@ Este repo incluye un arnés explícito para futuras ejecuciones de Codex:
 
 Hay varias formas de contribuir sin meterse de frente a toda la arquitectura:
 
-- `Datos`: agregar muestras reales o documentadas de `SEACE / CONOSCE`, `MEF` u otras fuentes públicas peruanas.
+- `Datos`: agregar muestras reales o documentadas de `SEACE / CONOSCE`, `MEF` u otras fuentes públicas peruanas de los portales de datos abeirtos.
 - `ETL`: mejorar normalización, joins por `RUC` y rendimiento de carga hacia Neo4j.
 - `Frontend`: pulir búsqueda, ficha de proveedor, trazabilidad visible y branding Perú.
 - `API`: ampliar endpoints públicos para consultas cívicas útiles sin exponer datos sensibles.
