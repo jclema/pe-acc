@@ -126,6 +126,44 @@ def test_transform_maps_real_tcp_columns() -> None:
     assert sanction["extraction_date"] == "2026-04-04"
 
 
+def test_transform_maps_real_judicial_columns() -> None:
+    """Real OSCE export uses RUC/DNI, RazonSocial/Nombre, NumeroResolucion,
+    OrganoJurisdiccional, Periodo, FechaInicioInhabilitacion, FechaFinInhabilitacion
+    (not the RUC_DNI / ORGANO_JURISDICCIONAL / FECHA_INICIO names used elsewhere)."""
+    pipeline = _make_pipeline()
+    pipeline.raw_files = []
+    pipeline._raw_sanctions = pd.DataFrame(
+        [
+            {
+                "RUC/DNI": "10308354194",
+                "RazonSocial/Nombre": "MELO JUANA",
+                "NumeroResolucion": "SENTENCIA DE FECHA 28.09.2017",
+                "OrganoJurisdiccional": "Corte Superior de Justicia de Arequipa",
+                "Periodo": "48 MES(ES)",
+                "FechaInicioInhabilitacion": "08/11/2017",
+                "FechaFinInhabilitacion": "08/11/2021",
+            },
+        ],
+    )
+
+    provider, sanction, _ = pipeline._normalize_sanction_row(
+        pipeline._raw_sanctions.iloc[0].to_dict(),
+        0,
+        source_kind="judicial",
+        source_file="inhabilitaciones_judiciales.csv",
+    )
+
+    assert provider is not None
+    assert provider["ruc"] == "10308354194"
+    assert sanction is not None
+    assert sanction["provider_name"] == "MELO JUANA"
+    assert sanction["sanction_source"] == "PODER_JUDICIAL"
+    assert sanction["reason"] == "Corte Superior de Justicia de Arequipa"
+    assert sanction["resolution_number"] == "SENTENCIA DE FECHA 28.09.2017"
+    assert sanction["date_start"] == "2017-11-08"
+    assert sanction["date_end"] == "2021-11-08"
+
+
 def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
     raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
     raw_dir.mkdir(parents=True)

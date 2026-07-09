@@ -218,21 +218,23 @@ class PeOsceSanctionsPipeline(Pipeline):
         source_kind: str | None = None,
         source_file: str = "",
     ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
-        doc = strip_document(str(raw_row.get("ruc", raw_row.get("RUC", raw_row.get("RUC_DNI", "")))))
+        doc = strip_document(
+            self._first_value(raw_row, "ruc", "RUC", "RUC_DNI", "RUC/DNI"),
+        )
         if len(doc) != 11:
             return None, None, None
 
         provider_name = normalize_name(
-            str(
-                raw_row.get(
-                    "provider_name",
-                    raw_row.get("NOMBRE_RAZONODENOMINACIONSOCIAL", ""),
-                ),
+            self._first_value(
+                raw_row,
+                "provider_name",
+                "NOMBRE_RAZONODENOMINACIONSOCIAL",
+                "RazonSocial/Nombre",
             ),
         ) or f"RUC {doc}"
 
         extraction_date = self._parse_extraction_date(
-            str(raw_row.get("extraction_date", raw_row.get("FECHA_CORTE", ""))),
+            self._first_value(raw_row, "extraction_date", "FECHA_CORTE"),
         )
 
         kind = source_kind or "tcp_vigente"
@@ -243,15 +245,19 @@ class PeOsceSanctionsPipeline(Pipeline):
 
         if kind == "tcp_vigente":
             sanction_type = "TRIBUNAL_CONTRATACIONES"
-            sanction_reason = str(raw_row.get("DE_MOTIVO_INFRACCION", "")).strip()
+            sanction_reason = self._first_value(raw_row, "DE_MOTIVO_INFRACCION")
         elif kind == "judicial":
             sanction_type = "MANDATO_JUDICIAL"
-            sanction_reason = str(raw_row.get("ORGANO_JURISDICCIONAL", "")).strip()
+            sanction_reason = self._first_value(
+                raw_row, "ORGANO_JURISDICCIONAL", "OrganoJurisdiccional",
+            )
 
-        resolution = str(raw_row.get("NUMERO_RESOLUCION", raw_row.get("sanction_id", ""))).strip()
+        resolution = self._first_value(
+            raw_row, "NUMERO_RESOLUCION", "NumeroResolucion", "sanction_id",
+        )
         sanction_id = resolution or f"{kind}_{doc}_{idx}"
 
-        row_source_url = str(raw_row.get("source_url", "")).strip()
+        row_source_url = self._first_value(raw_row, "source_url")
         source_url = row_source_url or _registry_source_url(self.source_id)
 
         provider = {
@@ -273,8 +279,15 @@ class PeOsceSanctionsPipeline(Pipeline):
             "status": "VIGENTE",
             "sanction_source": sanction_source,
             "sanction_scope": sanction_scope,
-            "date_start": self._parse_extraction_date(str(raw_row.get("start_date", raw_row.get("FECHA_INICIO", "")))),
-            "date_end": self._parse_extraction_date(str(raw_row.get("end_date", raw_row.get("FECHA_FIN", "")))) or None,
+            "date_start": self._parse_extraction_date(
+                self._first_value(
+                    raw_row, "start_date", "FECHA_INICIO", "FechaInicioInhabilitacion",
+                ),
+            ),
+            "date_end": self._parse_extraction_date(
+                self._first_value(raw_row, "end_date", "FECHA_FIN", "FechaFinInhabilitacion"),
+            )
+            or None,
             "resolution_number": resolution,
             "source": "osce_sanctions",
             "source_dataset": source_file,
@@ -297,6 +310,14 @@ class PeOsceSanctionsPipeline(Pipeline):
         if "judicial" in lower:
             return "judicial"
         return "tcp_vigente"
+
+    @staticmethod
+    def _first_value(row: dict[str, Any], *keys: str) -> str:
+        for key in keys:
+            value = row.get(key)
+            if value not in (None, ""):
+                return str(value).strip()
+        return ""
 
     @staticmethod
     def _parse_extraction_date(value: str) -> str:
