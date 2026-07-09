@@ -71,6 +71,16 @@
   font-weight: 600;
 }
 
+.sourceLink {
+  color: var(--accent);
+  pointer-events: auto;
+  text-decoration: underline;
+}
+
+.sourceLink:hover {
+  color: var(--accent-hover);
+}
+
 .connections {
   font-family: var(--font-mono);
   font-size: 10px;

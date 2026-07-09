@@ -68,6 +68,7 @@ function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
     ? node.properties.sanction_source
     : node.sources?.[0]?.database ?? null;
   const sanctionSourceLabel = formatSourceLabel(sanctionSource);
+  const sourceUrl = typeof node.properties?.source_url === "string" ? node.properties.source_url : null;
   const dateStart = typeof node.properties?.date_start === "string" ? node.properties.date_start : null;
   const dateEnd = typeof node.properties?.date_end === "string" ? node.properties.date_end : null;
   const validity = dateStart || dateEnd
@@ -95,7 +96,23 @@ function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
           {sanctionReason && <span className={styles.meta}><strong>Detalle:</strong> {sanctionReason}</span>}
           {resolution && <span className={styles.meta}><strong>Resolución:</strong> {resolution}</span>}
           {validity && <span className={styles.meta}><strong>Vigencia:</strong> {validity}</span>}
-          {sanctionSourceLabel && <span className={styles.meta}><strong>Fuente:</strong> {sanctionSourceLabel}</span>}
+          {sanctionSourceLabel && (
+            <span className={styles.meta}>
+              <strong>Fuente:</strong>{" "}
+              {sourceUrl ? (
+                <a
+                  className={styles.sourceLink}
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {sanctionSourceLabel}
+                </a>
+              ) : (
+                sanctionSourceLabel
+              )}
+            </span>
+          )}
         </div>
       )}
       <span className={styles.connections}>
