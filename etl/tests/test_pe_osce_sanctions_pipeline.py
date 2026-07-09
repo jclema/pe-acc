@@ -62,6 +62,41 @@ def test_load_creates_has_sanction_relationship() -> None:
     assert rel_calls, "Expected HAS_SANCTION MERGE calls"
 
 
+def test_transform_keeps_fixture_source_url() -> None:
+    pipeline = _make_pipeline()
+    _load_fixture_data(pipeline)
+    pipeline.transform()
+
+    assert pipeline.sanctions[0]["source_url"] == "https://example.gob.pe/osce/001"
+    assert pipeline.providers[0]["source_url"] == "https://example.gob.pe/osce/001"
+
+
+def test_transform_falls_back_to_registry_source_url() -> None:
+    pipeline = _make_pipeline()
+    pipeline.raw_files = []
+    pipeline._raw_sanctions = pd.DataFrame(
+        [
+            {
+                "FECHA_CORTE": "20260404",
+                "RUC": "20100994128",
+                "NOMBRE_RAZONODENOMINACIONSOCIAL": "CONSTRUCTORA DOS DE MAYO S.A.",
+                "FECHA_INICIO": "19980806",
+                "FECHA_FIN": "",
+                "NUMERO_RESOLUCION": "074-1998-TL",
+                "ID_MOTIVO_INFRACCION": "12",
+                "DE_MOTIVO_INFRACCION": "RESCISION ADMINISTRATIVA DEL CONTRATO",
+            },
+        ],
+    )
+
+    pipeline.transform()
+
+    source_url = pipeline.sanctions[0]["source_url"]
+    assert source_url
+    assert source_url.startswith("https://")
+    assert pipeline.providers[0]["source_url"] == source_url
+
+
 def test_transform_maps_real_tcp_columns() -> None:
     pipeline = _make_pipeline()
     pipeline.raw_files = []
@@ -134,3 +169,4 @@ def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
     by_source = {row["sanction_source"]: row for row in rows}
     assert by_source["OSCE_TCP"]["ruc"] == "20100994128"
     assert by_source["PODER_JUDICIAL"]["ruc"] == "10040039711"
+    assert all(row["source_url"] for row in rows)
