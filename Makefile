@@ -1,4 +1,4 @@
-.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check agent-check-fast agent-check-full agent-bootstrap-demo agent-health seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data ensure-demo-user link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
+.PHONY: dev stop api etl frontend lint type-check test test-api test-etl test-frontend test-integration-api test-integration-etl test-integration check agent-check-fast agent-check-full agent-bootstrap-demo agent-health seed clean download-cnpj download-tse download-transparencia download-sanctions download-all etl-cnpj etl-cnpj-stream etl-tse etl-transparencia etl-sanctions etl-all etl-pe-sunat-ruc etl-pe-osce-sanctions etl-pe-osce-sanctions-api etl-pe-seace-conosce etl-pe-demo prepare-pe-demo-data ensure-demo-user link-persons bootstrap-demo bootstrap-pe-demo bootstrap-full bootstrap-all bootstrap-all-noninteractive bootstrap-all-report check-public-claims check-source-urls check-pipeline-contracts check-pipeline-inputs generate-pipeline-status generate-source-summary generate-reference-metrics
 
 # ── Development ─────────────────────────────────────────
 setup-env:
@@ -70,6 +70,9 @@ etl-pe-sunat-ruc:
 
 etl-pe-osce-sanctions:
 	cd etl && uv run bracc-etl run --source pe_osce_sanctions --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data
+
+etl-pe-osce-sanctions-api:
+	cd etl && PE_OSCE_SOURCE_MODE=api uv run bracc-etl run --source pe_osce_sanctions --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data
 
 etl-pe-seace-conosce:
 	cd etl && uv run bracc-etl run --source pe_seace_conosce --neo4j-password "$${NEO4J_PASSWORD}" --data-dir ../data

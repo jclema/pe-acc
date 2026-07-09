@@ -21,6 +21,19 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_REGISTRY_PATH = _REPO_ROOT / "docs" / "source_registry_pe_v1.csv"
 
+# The dataset is no longer served from the CKAN datastore of datosabiertos.gob.pe
+# (that URL now 301s to a generic search page). OSCE currently publishes the live
+# CSVs as attachments on a public Confluence page instead. Both are overridable via
+# env var in case OSCE moves the page again.
+_CONFLUENCE_BASE_URL = os.getenv(
+    "PE_OSCE_CONFLUENCE_BASE_URL", "https://osce-gob-pe.atlassian.net/wiki",
+)
+_CONFLUENCE_PAGE_ID = os.getenv("PE_OSCE_CONFLUENCE_PAGE_ID", "106889269")
+_TCP_ATTACHMENT_NAME = "sancionados.csv"
+_JUDICIAL_ATTACHMENT_NAME = "inhabilitaciones_judiciales.csv"
+_HTTP_USER_AGENT = "Mozilla/5.0 (compatible; PEACC-etl/1.0)"
+_HTTP_TIMEOUT_SEC = 60.0
+
 
 @functools.lru_cache(maxsize=8)
 def _registry_source_url(source_id: str) -> str:
@@ -55,6 +68,7 @@ class PeOsceSanctionsPipeline(Pipeline):
         data_dir: str = "./data",
         limit: int | None = None,
         chunk_size: int = 50_000,
+        source_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(driver, data_dir, limit=limit, chunk_size=chunk_size, **kwargs)
@@ -64,8 +78,70 @@ class PeOsceSanctionsPipeline(Pipeline):
         self.provider_sanctions: list[dict[str, Any]] = []
         self.raw_files: list[Path] = []
         self.normalized_csv_path: Path | None = None
+        self.source_mode = source_mode or os.getenv("PE_OSCE_SOURCE_MODE", "file")
 
     def extract(self) -> None:
+        if self.source_mode == "api":
+            try:
+                self._extract_via_api()
+                return
+            except Exception as exc:  # noqa: BLE001 - any API failure must fall back to file mode
+                logger.warning(
+                    "[%s] API fetch failed (%s); falling back to file mode", self.name, exc,
+                )
+        self._extract_from_local_files()
+
+    def _extract_via_api(self) -> None:
+        """Fetch the live sanciones CSVs from OSCE's public Confluence page.
+
+        The dataset is no longer served through the CKAN datastore of
+        datosabiertos.gob.pe (see _CONFLUENCE_BASE_URL comment above); this is
+        the actual live source as of the OSCE portal migration.
+        """
+        import httpx
+
+        headers = {"User-Agent": _HTTP_USER_AGENT, "Accept": "application/json"}
+        listing_url = (
+            f"{_CONFLUENCE_BASE_URL}/rest/api/content/{_CONFLUENCE_PAGE_ID}"
+            "/child/attachment?limit=50"
+        )
+        response = httpx.get(listing_url, headers=headers, timeout=_HTTP_TIMEOUT_SEC)
+        response.raise_for_status()
+        attachments = response.json().get("results", [])
+
+        wanted = {_TCP_ATTACHMENT_NAME: None, _JUDICIAL_ATTACHMENT_NAME: None}
+        for attachment in attachments:
+            title = attachment.get("title", "")
+            if title in wanted:
+                wanted[title] = attachment.get("_links", {}).get("download")
+
+        raw_dir = Path(self.data_dir) / "raw" / "pe" / "osce_sanctions"
+        raw_dir.mkdir(parents=True, exist_ok=True)
+
+        downloaded: list[Path] = []
+        for filename, download_path in wanted.items():
+            if not download_path:
+                logger.warning("[%s] attachment not found via API: %s", self.name, filename)
+                continue
+            file_response = httpx.get(
+                f"{_CONFLUENCE_BASE_URL}{download_path}",
+                headers={"User-Agent": _HTTP_USER_AGENT},
+                timeout=_HTTP_TIMEOUT_SEC,
+                follow_redirects=True,
+            )
+            file_response.raise_for_status()
+            dest = raw_dir / filename
+            dest.write_bytes(file_response.content)
+            downloaded.append(dest)
+
+        if not downloaded:
+            msg = "No OSCE sanctions attachments found via Confluence API"
+            raise RuntimeError(msg)
+
+        logger.info("[%s] fetched %d file(s) via API", self.name, len(downloaded))
+        self.raw_files = sorted(downloaded)
+
+    def _extract_from_local_files(self) -> None:
         raw_dir_candidates = [
             Path(self.data_dir) / "raw" / "pe" / "osce_sanctions",
             Path(self.data_dir) / "pe" / "osce_sanctions",

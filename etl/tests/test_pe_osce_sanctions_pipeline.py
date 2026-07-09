@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
@@ -208,3 +208,99 @@ def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
     assert by_source["OSCE_TCP"]["ruc"] == "20100994128"
     assert by_source["PODER_JUDICIAL"]["ruc"] == "10040039711"
     assert all(row["source_url"] for row in rows)
+
+
+def test_default_source_mode_is_file() -> None:
+    pipeline = _make_pipeline()
+    assert pipeline.source_mode == "file"
+
+
+def _mock_response(
+    *, json_body: object = None, content: bytes = b"", status: int = 200,
+) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status
+    response.raise_for_status = MagicMock()
+    if status >= 400:
+        response.raise_for_status.side_effect = RuntimeError(f"HTTP {status}")
+    response.json.return_value = json_body
+    response.content = content
+    return response
+
+
+def test_extract_via_api_downloads_known_attachments(tmp_path: Path) -> None:
+    listing = {
+        "results": [
+            {
+                "title": "sancionados.csv",
+                "_links": {"download": "/rest/api/content/1/child/attachment/att1/download"},
+            },
+            {
+                "title": "inhabilitaciones_judiciales.csv",
+                "_links": {"download": "/rest/api/content/1/child/attachment/att2/download"},
+            },
+            {
+                "title": "Socios.csv",
+                "_links": {"download": "/rest/api/content/1/child/attachment/att3/download"},
+            },
+        ],
+    }
+    tcp_body = (
+        b"FECHA_CORTE|RUC|NOMBRE_RAZONODENOMINACIONSOCIAL|FECHA_INICIO|FECHA_FIN|"
+        b"NUMERO_RESOLUCION|ID_MOTIVO_INFRACCION|DE_MOTIVO_INFRACCION\n"
+    )
+    judicial_body = (
+        b"RUC/DNI|RazonSocial/Nombre|NumeroResolucion|OrganoJurisdiccional|Periodo|"
+        b"FechaInicioInhabilitacion|FechaFinInhabilitacion\n"
+    )
+
+    responses = [
+        _mock_response(json_body=listing),
+        _mock_response(content=tcp_body),
+        _mock_response(content=judicial_body),
+    ]
+
+    driver = MagicMock()
+    pipeline = PeOsceSanctionsPipeline(driver=driver, data_dir=str(tmp_path), source_mode="api")  # type: ignore[arg-type]
+
+    with patch("httpx.get", side_effect=responses) as mock_get:
+        pipeline.extract()
+
+    assert mock_get.call_count == 3
+    assert {p.name for p in pipeline.raw_files} == {
+        "sancionados.csv", "inhabilitaciones_judiciales.csv",
+    }
+    for path in pipeline.raw_files:
+        assert path.exists()
+    assert (tmp_path / "raw" / "pe" / "osce_sanctions" / "sancionados.csv").read_bytes() == tcp_body
+
+
+def test_extract_falls_back_to_file_mode_on_api_failure(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "sancionados.csv").write_text(
+        "FECHA_CORTE|RUC|NOMBRE_RAZONODENOMINACIONSOCIAL|FECHA_INICIO|FECHA_FIN|NUMERO_RESOLUCION|"
+        "ID_MOTIVO_INFRACCION|DE_MOTIVO_INFRACCION\n",
+        encoding="latin-1",
+    )
+
+    driver = MagicMock()
+    pipeline = PeOsceSanctionsPipeline(driver=driver, data_dir=str(tmp_path), source_mode="api")  # type: ignore[arg-type]
+
+    with patch("httpx.get", side_effect=RuntimeError("network down")):
+        pipeline.extract()
+
+    assert pipeline.raw_files == [raw_dir / "sancionados.csv"]
+
+
+def test_extract_via_api_raises_when_no_attachments_found(tmp_path: Path) -> None:
+    responses = [_mock_response(json_body={"results": []})]
+
+    driver = MagicMock()
+    pipeline = PeOsceSanctionsPipeline(driver=driver, data_dir=str(tmp_path), source_mode="api")  # type: ignore[arg-type]
+
+    with patch("httpx.get", side_effect=responses):
+        pipeline.extract()
+
+    # No attachments found -> API path raises internally and extract() falls back to file mode
+    assert pipeline.raw_files == []
