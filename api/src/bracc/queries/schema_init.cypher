@@ -5,6 +5,12 @@
 CREATE CONSTRAINT person_cpf_unique IF NOT EXISTS
   FOR (p:Person) REQUIRE p.cpf IS UNIQUE;
 
+CREATE CONSTRAINT person_dni_unique IF NOT EXISTS
+  FOR (p:Person) REQUIRE p.dni IS UNIQUE;
+
+CREATE CONSTRAINT provider_ruc_unique IF NOT EXISTS
+  FOR (p:Provider) REQUIRE p.ruc IS UNIQUE;
+
 CREATE CONSTRAINT partner_id_unique IF NOT EXISTS
   FOR (p:Partner) REQUIRE p.partner_id IS UNIQUE;
 
