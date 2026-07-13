@@ -31,6 +31,16 @@ _CONFLUENCE_BASE_URL = os.getenv(
 _CONFLUENCE_PAGE_ID = os.getenv("PE_OSCE_CONFLUENCE_PAGE_ID", "106889269")
 _TCP_ATTACHMENT_NAME = "sancionados.csv"
 _JUDICIAL_ATTACHMENT_NAME = "inhabilitaciones_judiciales.csv"
+_MULTA_ATTACHMENT_NAME = "sancionados_multa.csv"
+_ADMIN_ATTACHMENT_NAME = "inhabilitaciones_administrativas.csv"
+_TCP_LEGACY_ATTACHMENT_NAME = "sancionadas.csv"
+_ALL_ATTACHMENT_NAMES = (
+    _TCP_ATTACHMENT_NAME,
+    _JUDICIAL_ATTACHMENT_NAME,
+    _MULTA_ATTACHMENT_NAME,
+    _ADMIN_ATTACHMENT_NAME,
+    _TCP_LEGACY_ATTACHMENT_NAME,
+)
 _HTTP_USER_AGENT = "Mozilla/5.0 (compatible; PEACC-etl/1.0)"
 _HTTP_TIMEOUT_SEC = 60.0
 
@@ -109,7 +119,7 @@ class PeOsceSanctionsPipeline(Pipeline):
         response.raise_for_status()
         attachments = response.json().get("results", [])
 
-        wanted = {_TCP_ATTACHMENT_NAME: None, _JUDICIAL_ATTACHMENT_NAME: None}
+        wanted: dict[str, str | None] = dict.fromkeys(_ALL_ATTACHMENT_NAMES)
         for attachment in attachments:
             title = attachment.get("title", "")
             if title in wanted:
@@ -261,6 +271,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 "status",
                 "start_date",
                 "end_date",
+                "amount",
                 "source_url",
                 "source_dataset",
                 "extraction_date",
@@ -280,6 +291,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                         "status": sanction.get("status", ""),
                         "start_date": sanction.get("date_start", ""),
                         "end_date": sanction.get("date_end", ""),
+                        "amount": sanction.get("amount") or "",
                         "source_url": sanction.get("source_url", ""),
                         "source_dataset": sanction.get("source_dataset", ""),
                         "extraction_date": sanction.get("extraction_date", ""),
@@ -306,6 +318,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 "provider_name",
                 "NOMBRE_RAZONODENOMINACIONSOCIAL",
                 "RazonSocial/Nombre",
+                "Nombre_Raz_Social",
             ),
         ) or f"RUC {doc}"
 
@@ -314,24 +327,33 @@ class PeOsceSanctionsPipeline(Pipeline):
         )
 
         kind = source_kind or "tcp_vigente"
-        sanction_source = "OSCE_TCP" if kind == "tcp_vigente" else "PODER_JUDICIAL"
         sanction_scope = "vigente"
         sanction_type = "INHABILITACION"
         sanction_reason = ""
+        sanction_source = "OSCE_TCP"
 
-        if kind == "tcp_vigente":
+        if kind in ("tcp_vigente", "tcp_legacy"):
             sanction_type = "TRIBUNAL_CONTRATACIONES"
             sanction_reason = self._first_value(raw_row, "DE_MOTIVO_INFRACCION")
+        elif kind == "multa":
+            sanction_type = "MULTA"
+            sanction_reason = self._first_value(raw_row, "DE_MOTIVO_INFRACCION")
+        elif kind == "administrativa":
+            sanction_type = "INHABILITACION_ADMINISTRATIVA"
+            sanction_source = "ENTIDAD_ADMINISTRATIVA"
+            sanction_reason = self._first_value(raw_row, "Entidad")
         elif kind == "judicial":
             sanction_type = "MANDATO_JUDICIAL"
+            sanction_source = "PODER_JUDICIAL"
             sanction_reason = self._first_value(
                 raw_row, "ORGANO_JURISDICCIONAL", "OrganoJurisdiccional",
             )
 
         resolution = self._first_value(
-            raw_row, "NUMERO_RESOLUCION", "NumeroResolucion", "sanction_id",
+            raw_row, "NUMERO_RESOLUCION", "NumeroResolucion", "Resolucion", "sanction_id",
         )
         sanction_id = resolution or f"{kind}_{doc}_{idx}"
+        amount = self._first_value(raw_row, "MONTO") if kind == "multa" else ""
 
         row_source_url = self._first_value(raw_row, "source_url")
         source_url = row_source_url or _registry_source_url(self.source_id)
@@ -357,14 +379,17 @@ class PeOsceSanctionsPipeline(Pipeline):
             "sanction_scope": sanction_scope,
             "date_start": self._parse_extraction_date(
                 self._first_value(
-                    raw_row, "start_date", "FECHA_INICIO", "FechaInicioInhabilitacion",
+                    raw_row, "start_date", "FECHA_INICIO", "FechaInicioInhabilitacion", "Desde",
                 ),
             ),
             "date_end": self._parse_extraction_date(
-                self._first_value(raw_row, "end_date", "FECHA_FIN", "FechaFinInhabilitacion"),
+                self._first_value(
+                    raw_row, "end_date", "FECHA_FIN", "FechaFinInhabilitacion", "Hasta",
+                ),
             )
             or None,
             "resolution_number": resolution,
+            "amount": amount or None,
             "source": "osce_sanctions",
             "source_dataset": source_file,
             "source_url": source_url,
@@ -385,6 +410,12 @@ class PeOsceSanctionsPipeline(Pipeline):
         lower = filename.lower()
         if "judicial" in lower:
             return "judicial"
+        if "multa" in lower:
+            return "multa"
+        if "administrativa" in lower:
+            return "administrativa"
+        if lower == "sancionadas.csv":
+            return "tcp_legacy"
         return "tcp_vigente"
 
     @staticmethod

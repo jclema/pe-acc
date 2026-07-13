@@ -229,19 +229,25 @@ def _mock_response(
 
 
 def test_extract_via_api_downloads_known_attachments(tmp_path: Path) -> None:
+    wanted_names = [
+        "sancionados.csv",
+        "inhabilitaciones_judiciales.csv",
+        "sancionados_multa.csv",
+        "inhabilitaciones_administrativas.csv",
+        "sancionadas.csv",
+    ]
     listing = {
         "results": [
             {
-                "title": "sancionados.csv",
-                "_links": {"download": "/rest/api/content/1/child/attachment/att1/download"},
-            },
-            {
-                "title": "inhabilitaciones_judiciales.csv",
-                "_links": {"download": "/rest/api/content/1/child/attachment/att2/download"},
-            },
+                "title": name,
+                "_links": {"download": f"/rest/api/content/1/child/attachment/att{i}/download"},
+            }
+            for i, name in enumerate(wanted_names)
+        ]
+        + [
             {
                 "title": "Socios.csv",
-                "_links": {"download": "/rest/api/content/1/child/attachment/att3/download"},
+                "_links": {"download": "/rest/api/content/1/child/attachment/att99/download"},
             },
         ],
     }
@@ -249,16 +255,9 @@ def test_extract_via_api_downloads_known_attachments(tmp_path: Path) -> None:
         b"FECHA_CORTE|RUC|NOMBRE_RAZONODENOMINACIONSOCIAL|FECHA_INICIO|FECHA_FIN|"
         b"NUMERO_RESOLUCION|ID_MOTIVO_INFRACCION|DE_MOTIVO_INFRACCION\n"
     )
-    judicial_body = (
-        b"RUC/DNI|RazonSocial/Nombre|NumeroResolucion|OrganoJurisdiccional|Periodo|"
-        b"FechaInicioInhabilitacion|FechaFinInhabilitacion\n"
-    )
 
-    responses = [
-        _mock_response(json_body=listing),
-        _mock_response(content=tcp_body),
-        _mock_response(content=judicial_body),
-    ]
+    responses = [_mock_response(json_body=listing)]
+    responses += [_mock_response(content=tcp_body) for _ in wanted_names]
 
     driver = MagicMock()
     pipeline = PeOsceSanctionsPipeline(driver=driver, data_dir=str(tmp_path), source_mode="api")  # type: ignore[arg-type]
@@ -266,10 +265,8 @@ def test_extract_via_api_downloads_known_attachments(tmp_path: Path) -> None:
     with patch("httpx.get", side_effect=responses) as mock_get:
         pipeline.extract()
 
-    assert mock_get.call_count == 3
-    assert {p.name for p in pipeline.raw_files} == {
-        "sancionados.csv", "inhabilitaciones_judiciales.csv",
-    }
+    assert mock_get.call_count == 1 + len(wanted_names)
+    assert {p.name for p in pipeline.raw_files} == set(wanted_names)
     for path in pipeline.raw_files:
         assert path.exists()
     assert (tmp_path / "raw" / "pe" / "osce_sanctions" / "sancionados.csv").read_bytes() == tcp_body
@@ -304,3 +301,100 @@ def test_extract_via_api_raises_when_no_attachments_found(tmp_path: Path) -> Non
 
     # No attachments found -> API path raises internally and extract() falls back to file mode
     assert pipeline.raw_files == []
+
+
+def test_transform_maps_multa_columns() -> None:
+    pipeline = _make_pipeline()
+    pipeline.raw_files = []
+    pipeline._raw_sanctions = pd.DataFrame(
+        [
+            {
+                "FECHA_CORTE": "20240511",
+                "RUC": "10000345739",
+                "NOMBRE_RAZONODENOMINACIONSOCIAL": "FLORES GARCIA LUIS ARTIDORO",
+                "FECHA_INICIO": "20210803",
+                "FECHA_FIN": "20220103",
+                "NUMERO_RESOLUCION": "1572-2021-TCE-S4",
+                "DE_MOTIVO_INFRACCION": "Incumplir injustificadamente con su obligacion",
+                "MONTO": "7700",
+            },
+        ],
+    )
+
+    provider, sanction, _ = pipeline._normalize_sanction_row(
+        pipeline._raw_sanctions.iloc[0].to_dict(),
+        0,
+        source_kind="multa",
+        source_file="sancionados_multa.csv",
+    )
+
+    assert provider is not None
+    assert provider["ruc"] == "10000345739"
+    assert sanction is not None
+    assert sanction["type"] == "MULTA"
+    assert sanction["sanction_source"] == "OSCE_TCP"
+    assert sanction["amount"] == "7700"
+    assert sanction["resolution_number"] == "1572-2021-TCE-S4"
+
+
+def test_transform_maps_administrativa_columns() -> None:
+    pipeline = _make_pipeline()
+    pipeline.raw_files = []
+    pipeline._raw_sanctions = pd.DataFrame(
+        [
+            {
+                "RUC/DNI": "20481422141",
+                "RazonSocial/Nombre": "ROCA INGENIERIA DE LA CONSTRUCCION SAC",
+                "NumeroResolucion": "07",
+                "Entidad": "Contraloria General de la Republica",
+                "FechaInicioInhabilitacion": "01/02/2020",
+                "FechaFinInhabilitacion": "01/02/2022",
+            },
+        ],
+    )
+
+    provider, sanction, _ = pipeline._normalize_sanction_row(
+        pipeline._raw_sanctions.iloc[0].to_dict(),
+        0,
+        source_kind="administrativa",
+        source_file="inhabilitaciones_administrativas.csv",
+    )
+
+    assert provider is not None
+    assert sanction is not None
+    assert sanction["type"] == "INHABILITACION_ADMINISTRATIVA"
+    assert sanction["sanction_source"] == "ENTIDAD_ADMINISTRATIVA"
+    assert sanction["reason"] == "Contraloria General de la Republica"
+    assert sanction["date_start"] == "2020-02-01"
+    assert sanction["date_end"] == "2022-02-01"
+
+
+def test_transform_maps_tcp_legacy_columns() -> None:
+    pipeline = _make_pipeline()
+    pipeline.raw_files = []
+    pipeline._raw_sanctions = pd.DataFrame(
+        [
+            {
+                "RUC": "20100994128",
+                "Nombre_Raz_Social": "CONSTRUCTORA DOS DE MAYO S.A.",
+                "Periodo_Inhabilitacion": "DEFINITIVO",
+                "Desde": "06/08/1998 00:00",
+                "Hasta": "",
+                "Resolucion": "074-1998-TL",
+            },
+        ],
+    )
+
+    provider, sanction, _ = pipeline._normalize_sanction_row(
+        pipeline._raw_sanctions.iloc[0].to_dict(),
+        0,
+        source_kind="tcp_legacy",
+        source_file="sancionadas.csv",
+    )
+
+    assert provider is not None
+    assert sanction is not None
+    assert sanction["type"] == "TRIBUNAL_CONTRATACIONES"
+    assert sanction["sanction_source"] == "OSCE_TCP"
+    assert sanction["resolution_number"] == "074-1998-TL"
+    assert sanction["sanction_id"] == "074-1998-TL"
