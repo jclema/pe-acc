@@ -16,6 +16,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_SUPPORTED_DELIMITERS = ("|", ",")
+_DOCUMENT_COLUMNS = ("ruc", "RUC", "RUC_DNI", "RUC/DNI")
+_RESOLUTION_COLUMNS = ("sanction_id", "NUMERO_RESOLUCION", "NumeroResolucion")
+
 
 class PeOsceSanctionsPipeline(Pipeline):
     """Minimal MVP pipeline for Peru OSCE sanctions linked by provider RUC."""
@@ -45,9 +49,16 @@ class PeOsceSanctionsPipeline(Pipeline):
             Path(self.data_dir) / "pe" / "osce_sanctions",
             Path(self.data_dir) / "osce_sanctions",
         ]
-        raw_dir = next((path for path in raw_dir_candidates if path.exists() and path.is_dir()), None)
+        raw_dir = next(
+            (path for path in raw_dir_candidates if path.exists() and path.is_dir()),
+            None,
+        )
         if raw_dir is None:
-            logger.warning("[%s] raw sanctions directory not found in %s", self.name, raw_dir_candidates)
+            logger.warning(
+                "[%s] raw sanctions directory not found in %s",
+                self.name,
+                raw_dir_candidates,
+            )
             return
         self.raw_files = sorted(
             [
@@ -69,7 +80,8 @@ class PeOsceSanctionsPipeline(Pipeline):
         relationships: list[dict[str, Any]] = []
 
         for idx, row in self._raw_sanctions.iterrows():
-            provider, sanction, relationship = self._normalize_sanction_row(row.to_dict(), idx)
+            raw_row = {str(key): value for key, value in row.to_dict().items()}
+            provider, sanction, relationship = self._normalize_sanction_row(raw_row, idx)
             if provider is None or sanction is None or relationship is None:
                 continue
             providers.append(provider)
@@ -116,17 +128,13 @@ class PeOsceSanctionsPipeline(Pipeline):
 
         for file_path in self.raw_files:
             source_kind = self._source_kind_for_file(file_path.name)
-            df = pd.read_csv(
-                file_path,
-                dtype=str,
-                keep_default_na=False,
-                encoding="latin-1",
-                sep="|",
-            )
+            df = self._read_raw_csv(file_path)
             rows_in += len(df)
+            sanctions_before_file = len(sanctions)
             for idx, row in df.iterrows():
+                raw_row = {str(key): value for key, value in row.to_dict().items()}
                 provider, sanction, relationship = self._normalize_sanction_row(
-                    row.to_dict(),
+                    raw_row,
                     idx,
                     source_kind=source_kind,
                     source_file=file_path.name,
@@ -138,13 +146,21 @@ class PeOsceSanctionsPipeline(Pipeline):
                 relationships.append(relationship)
                 if self.limit is not None and len(sanctions) >= self.limit:
                     break
+            if not df.empty and len(sanctions) == sanctions_before_file:
+                msg = (
+                    f"{file_path}: no valid sanction rows; expected an 11-digit RUC "
+                    "and a non-empty sanction resolution"
+                )
+                raise ValueError(msg)
             if self.limit is not None and len(sanctions) >= self.limit:
                 break
 
         self.rows_in = rows_in
         self.providers = deduplicate_rows(providers, ["ruc"])
         self.sanctions = deduplicate_rows(sanctions, ["sanction_id"])
-        self.provider_sanctions = relationships[: self.limit] if self.limit is not None else relationships
+        self.provider_sanctions = (
+            relationships[: self.limit] if self.limit is not None else relationships
+        )
         self.rows_loaded = len(self.sanctions)
 
         with self.normalized_csv_path.open("w", encoding="utf-8", newline="") as f:
@@ -187,26 +203,26 @@ class PeOsceSanctionsPipeline(Pipeline):
     def _normalize_sanction_row(
         self,
         raw_row: dict[str, Any],
-        idx: int,
+        _idx: object,
         *,
         source_kind: str | None = None,
         source_file: str = "",
     ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
-        doc = strip_document(str(raw_row.get("ruc", raw_row.get("RUC", raw_row.get("RUC_DNI", "")))))
+        doc = strip_document(self._first_value(raw_row, *_DOCUMENT_COLUMNS))
         if len(doc) != 11:
             return None, None, None
 
         provider_name = normalize_name(
-            str(
-                raw_row.get(
-                    "provider_name",
-                    raw_row.get("NOMBRE_RAZONODENOMINACIONSOCIAL", ""),
-                ),
+            self._first_value(
+                raw_row,
+                "provider_name",
+                "NOMBRE_RAZONODENOMINACIONSOCIAL",
+                "RazonSocial/Nombre",
             ),
         ) or f"RUC {doc}"
 
         extraction_date = self._parse_extraction_date(
-            str(raw_row.get("extraction_date", raw_row.get("FECHA_CORTE", ""))),
+            self._first_value(raw_row, "extraction_date", "FECHA_CORTE"),
         )
 
         kind = source_kind or "tcp_vigente"
@@ -217,14 +233,21 @@ class PeOsceSanctionsPipeline(Pipeline):
 
         if kind == "tcp_vigente":
             sanction_type = "TRIBUNAL_CONTRATACIONES"
-            sanction_reason = str(raw_row.get("DE_MOTIVO_INFRACCION", "")).strip()
+            sanction_reason = self._first_value(raw_row, "DE_MOTIVO_INFRACCION")
         elif kind == "judicial":
             sanction_type = "MANDATO_JUDICIAL"
-            sanction_reason = str(raw_row.get("ORGANO_JURISDICCIONAL", "")).strip()
+            sanction_reason = self._first_value(
+                raw_row,
+                "ORGANO_JURISDICCIONAL",
+                "OrganoJurisdiccional",
+            )
 
-        resolution = str(raw_row.get("NUMERO_RESOLUCION", raw_row.get("sanction_id", ""))).strip()
-        sanction_id = resolution or f"{kind}_{doc}_{idx}"
-
+        sanction_type = self._first_value(raw_row, "sanction_type") or sanction_type
+        sanction_reason = self._first_value(raw_row, "sanction_reason") or sanction_reason
+        resolution = self._first_value(raw_row, *_RESOLUTION_COLUMNS)
+        if not resolution:
+            return None, None, None
+        sanction_id = resolution
         provider = {
             "ruc": doc,
             "legal_name": provider_name,
@@ -244,8 +267,23 @@ class PeOsceSanctionsPipeline(Pipeline):
             "status": "VIGENTE",
             "sanction_source": sanction_source,
             "sanction_scope": sanction_scope,
-            "date_start": self._parse_extraction_date(str(raw_row.get("start_date", raw_row.get("FECHA_INICIO", "")))),
-            "date_end": self._parse_extraction_date(str(raw_row.get("end_date", raw_row.get("FECHA_FIN", "")))) or None,
+            "date_start": self._parse_extraction_date(
+                self._first_value(
+                    raw_row,
+                    "start_date",
+                    "FECHA_INICIO",
+                    "FechaInicioInhabilitacion",
+                ),
+            ),
+            "date_end": self._parse_extraction_date(
+                self._first_value(
+                    raw_row,
+                    "end_date",
+                    "FECHA_FIN",
+                    "FechaFinInhabilitacion",
+                ),
+            )
+            or None,
             "resolution_number": resolution,
             "source": "osce_sanctions",
             "source_dataset": source_file,
@@ -268,6 +306,58 @@ class PeOsceSanctionsPipeline(Pipeline):
         if "judicial" in lower:
             return "judicial"
         return "tcp_vigente"
+
+    @staticmethod
+    def _read_raw_csv(file_path: Path) -> pd.DataFrame:
+        try:
+            with file_path.open(encoding="latin-1", newline="") as raw_file:
+                header = raw_file.readline().lstrip("\ufeff").strip()
+        except OSError as exc:
+            msg = f"Unable to read OSCE sanctions CSV {file_path}: {exc}"
+            raise ValueError(msg) from exc
+
+        delimiter_counts = {
+            delimiter: header.count(delimiter) for delimiter in _SUPPORTED_DELIMITERS
+        }
+        delimiter = max(delimiter_counts, key=delimiter_counts.__getitem__) if header else ""
+        if not delimiter or delimiter_counts[delimiter] == 0:
+            expected = " or ".join(repr(item) for item in _SUPPORTED_DELIMITERS)
+            msg = f"{file_path}: unsupported CSV delimiter; expected {expected}"
+            raise ValueError(msg)
+
+        try:
+            dataframe = pd.read_csv(
+                file_path,
+                dtype=str,
+                keep_default_na=False,
+                encoding="latin-1",
+                sep=delimiter,
+            )
+        except (pd.errors.EmptyDataError, pd.errors.ParserError) as exc:
+            msg = f"{file_path}: invalid OSCE sanctions CSV: {exc}"
+            raise ValueError(msg) from exc
+
+        dataframe.columns = [str(column).lstrip("\ufeff").strip() for column in dataframe.columns]
+        columns = set(dataframe.columns)
+        missing_groups = []
+        if not columns.intersection(_DOCUMENT_COLUMNS):
+            missing_groups.append("RUC (ruc/RUC/RUC_DNI/RUC/DNI)")
+        if not columns.intersection(_RESOLUTION_COLUMNS):
+            missing_groups.append(
+                "resolution (sanction_id/NUMERO_RESOLUCION/NumeroResolucion)",
+            )
+        if missing_groups:
+            msg = f"{file_path}: missing required OSCE columns: {', '.join(missing_groups)}"
+            raise ValueError(msg)
+        return dataframe
+
+    @staticmethod
+    def _first_value(row: dict[str, Any], *keys: str) -> str:
+        for key in keys:
+            value = row.get(key)
+            if value not in (None, ""):
+                return str(value).strip()
+        return ""
 
     @staticmethod
     def _parse_extraction_date(value: str) -> str:
