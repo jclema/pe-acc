@@ -26,6 +26,8 @@ _GRAPH_PROPS = {
     "name", "razao_social", "legal_name", "trade_name", "cnpj", "cpf", "ruc",
     "entity_id", "process_id", "seace_code", "award_id", "execution_id",
     "value", "date", "status", "title", "object", "type", "uf", "cargo", "partido",
+    "sanction_id", "sanction_source", "resolution_number", "reason", "date_start",
+    "date_end", "source_url",
 }
 
 _DEFAULT_LABEL_FILTER = "-User|-Investigation|-Annotation|-Tag"
