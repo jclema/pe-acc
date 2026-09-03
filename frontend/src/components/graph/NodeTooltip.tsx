@@ -46,6 +46,18 @@ function formatSourceLabel(value: string | null): string | null {
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
+function safeSourceUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  const candidate = value.trim();
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
   const { t } = useTranslation();
 
@@ -68,6 +80,7 @@ function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
     ? node.properties.sanction_source
     : node.sources?.[0]?.database ?? null;
   const sanctionSourceLabel = formatSourceLabel(sanctionSource);
+  const sourceUrl = safeSourceUrl(node.properties?.source_url);
   const dateStart = typeof node.properties?.date_start === "string" ? node.properties.date_start : null;
   const dateEnd = typeof node.properties?.date_end === "string" ? node.properties.date_end : null;
   const validity = dateStart || dateEnd
@@ -95,7 +108,24 @@ function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
           {sanctionReason && <span className={styles.meta}><strong>Detalle:</strong> {sanctionReason}</span>}
           {resolution && <span className={styles.meta}><strong>Resolución:</strong> {resolution}</span>}
           {validity && <span className={styles.meta}><strong>Vigencia:</strong> {validity}</span>}
-          {sanctionSourceLabel && <span className={styles.meta}><strong>Fuente:</strong> {sanctionSourceLabel}</span>}
+          {sanctionSourceLabel && (
+            <span className={styles.meta}>
+              <strong>Fuente:</strong>{" "}
+              {sourceUrl ? (
+                <a
+                  aria-label={`Abrir fuente: ${sanctionSourceLabel}`}
+                  className={styles.sourceLink}
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {sanctionSourceLabel}
+                </a>
+              ) : (
+                sanctionSourceLabel
+              )}
+            </span>
+          )}
         </div>
       )}
       <span className={styles.connections}>
