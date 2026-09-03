@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import csv
+import functools
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -16,9 +18,29 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_DEFAULT_REGISTRY_PATH = _REPO_ROOT / "docs" / "source_registry_pe_v1.csv"
 _SUPPORTED_DELIMITERS = ("|", ",")
 _DOCUMENT_COLUMNS = ("ruc", "RUC", "RUC_DNI", "RUC/DNI")
 _RESOLUTION_COLUMNS = ("sanction_id", "NUMERO_RESOLUCION", "NumeroResolucion")
+
+
+@functools.lru_cache(maxsize=8)
+def _registry_source_url(source_id: str) -> str:
+    """Return the registered public page for a source, when available."""
+    configured_path = os.getenv("BRACC_SOURCE_REGISTRY_PATH", "").strip()
+    registry_path = Path(configured_path) if configured_path else _DEFAULT_REGISTRY_PATH
+    if not registry_path.is_absolute():
+        registry_path = _REPO_ROOT / registry_path
+    if not registry_path.exists():
+        logger.warning("[%s] source registry not found at %s", source_id, registry_path)
+        return ""
+
+    with registry_path.open(encoding="utf-8", newline="") as registry_file:
+        for row in csv.DictReader(registry_file):
+            if row.get("source_id") == source_id:
+                return (row.get("primary_url") or row.get("last_seen_url") or "").strip()
+    return ""
 
 
 class PeOsceSanctionsPipeline(Pipeline):
@@ -248,13 +270,17 @@ class PeOsceSanctionsPipeline(Pipeline):
         if not resolution:
             return None, None, None
         sanction_id = resolution
+        source_url = self._first_value(raw_row, "source_url") or _registry_source_url(
+            self.source_id,
+        )
+
         provider = {
             "ruc": doc,
             "legal_name": provider_name,
             "name": provider_name,
             "trade_name": "",
             "source": "osce_sanctions",
-            "source_url": "",
+            "source_url": source_url,
             "extraction_date": extraction_date,
         }
 
@@ -287,7 +313,7 @@ class PeOsceSanctionsPipeline(Pipeline):
             "resolution_number": resolution,
             "source": "osce_sanctions",
             "source_dataset": source_file,
-            "source_url": "",
+            "source_url": source_url,
             "extraction_date": extraction_date,
         }
 

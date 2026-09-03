@@ -51,6 +51,29 @@ def test_transform_keeps_ruc_linkage() -> None:
     assert rel["confidence"] == 1.0
 
 
+def test_transform_keeps_row_source_url() -> None:
+    pipeline = _make_pipeline()
+    _load_fixture_data(pipeline)
+    pipeline.transform()
+
+    expected_url = "https://example.gob.pe/osce/001"
+    assert pipeline.providers[0]["source_url"] == expected_url
+    assert pipeline.sanctions[0]["source_url"] == expected_url
+
+
+def test_transform_uses_registered_source_url_when_row_has_none() -> None:
+    pipeline = _make_pipeline()
+    pipeline._raw_sanctions = pd.DataFrame(
+        [{"ruc": "20100994128", "sanction_id": "074-1998-TL"}],
+    )
+
+    pipeline.transform()
+
+    source_url = pipeline.sanctions[0]["source_url"]
+    assert source_url.startswith("https://www.datosabiertos.gob.pe/")
+    assert pipeline.providers[0]["source_url"] == source_url
+
+
 def test_load_creates_has_sanction_relationship() -> None:
     pipeline = _make_pipeline()
     _load_fixture_data(pipeline)
@@ -258,3 +281,4 @@ def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
     by_source = {row["sanction_source"]: row for row in rows}
     assert by_source["OSCE_TCP"]["ruc"] == "20100994128"
     assert by_source["PODER_JUDICIAL"]["ruc"] == "10040039711"
+    assert all(row["source_url"] for row in rows)
