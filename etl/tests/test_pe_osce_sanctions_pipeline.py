@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pandas as pd
+import pytest
 
 from bracc_etl.pipelines.pe_osce_sanctions import PeOsceSanctionsPipeline
 
@@ -50,6 +51,29 @@ def test_transform_keeps_ruc_linkage() -> None:
     assert rel["confidence"] == 1.0
 
 
+def test_transform_keeps_row_source_url() -> None:
+    pipeline = _make_pipeline()
+    _load_fixture_data(pipeline)
+    pipeline.transform()
+
+    expected_url = "https://example.gob.pe/osce/001"
+    assert pipeline.providers[0]["source_url"] == expected_url
+    assert pipeline.sanctions[0]["source_url"] == expected_url
+
+
+def test_transform_uses_registered_source_url_when_row_has_none() -> None:
+    pipeline = _make_pipeline()
+    pipeline._raw_sanctions = pd.DataFrame(
+        [{"ruc": "20100994128", "sanction_id": "074-1998-TL"}],
+    )
+
+    pipeline.transform()
+
+    source_url = pipeline.sanctions[0]["source_url"]
+    assert source_url.startswith("https://www.datosabiertos.gob.pe/")
+    assert pipeline.providers[0]["source_url"] == source_url
+
+
 def test_load_creates_has_sanction_relationship() -> None:
     pipeline = _make_pipeline()
     _load_fixture_data(pipeline)
@@ -91,6 +115,125 @@ def test_transform_maps_real_tcp_columns() -> None:
     assert sanction["extraction_date"] == "2026-04-04"
 
 
+def test_transform_maps_real_judicial_columns() -> None:
+    pipeline = _make_pipeline()
+    row = {
+        "RUC/DNI": "10308354194",
+        "RazonSocial/Nombre": "MELO JUANA",
+        "NumeroResolucion": "SENTENCIA DE FECHA 28.09.2017",
+        "OrganoJurisdiccional": "Corte Superior de Justicia de Arequipa",
+        "FechaInicioInhabilitacion": "08/11/2017",
+        "FechaFinInhabilitacion": "08/11/2021",
+    }
+
+    provider, sanction, relationship = pipeline._normalize_sanction_row(
+        row,
+        0,
+        source_kind="judicial",
+        source_file="inhabilitaciones_judiciales.csv",
+    )
+
+    assert provider is not None
+    assert sanction is not None
+    assert relationship is not None
+    assert provider["ruc"] == "10308354194"
+    assert sanction["provider_name"] == "MELO JUANA"
+    assert sanction["sanction_source"] == "PODER_JUDICIAL"
+    assert sanction["reason"] == "Corte Superior de Justicia de Arequipa"
+    assert sanction["date_start"] == "2017-11-08"
+    assert sanction["date_end"] == "2021-11-08"
+
+
+def test_transform_raw_files_handles_comma_delimiter(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "sanctions.csv").write_text(
+        "\n".join(
+            [
+                "ruc,provider_name,sanction_id,sanction_type,sanction_reason,start_date,end_date,source_url,extraction_date",
+                "20123456789,Constructora Andina S.A.C.,OSCE-001,INHABILITACION,Informacion publicada,2026-03-15,2026-09-15,https://example.gob.pe/osce/001,2026-04-01",
+            ],
+        ),
+        encoding="latin-1",
+    )
+
+    pipeline = PeOsceSanctionsPipeline(driver=MagicMock(), data_dir=str(tmp_path))  # type: ignore[arg-type]
+    pipeline.extract()
+    pipeline.transform()
+
+    assert len(pipeline.sanctions) == 1
+    assert pipeline.sanctions[0]["sanction_id"] == "OSCE-001"
+    assert pipeline.sanctions[0]["type"] == "INHABILITACION"
+
+
+def test_transform_rejects_missing_required_columns(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "invalid.csv").write_text(
+        "provider_name,start_date\nProveedor,2026-01-01\n",
+        encoding="latin-1",
+    )
+    pipeline = PeOsceSanctionsPipeline(driver=MagicMock(), data_dir=str(tmp_path))  # type: ignore[arg-type]
+    pipeline.extract()
+
+    with pytest.raises(ValueError) as exc_info:
+        pipeline.transform()
+
+    message = str(exc_info.value)
+    assert "invalid.csv" in message
+    assert "missing required OSCE columns" in message
+
+
+def test_transform_rejects_unsupported_delimiter(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "invalid.csv").write_text(
+        "ruc;provider_name;sanction_id\n20123456789;Proveedor;OSCE-001\n",
+        encoding="latin-1",
+    )
+    pipeline = PeOsceSanctionsPipeline(driver=MagicMock(), data_dir=str(tmp_path))  # type: ignore[arg-type]
+    pipeline.extract()
+
+    with pytest.raises(ValueError, match="unsupported CSV delimiter"):
+        pipeline.transform()
+
+
+def test_transform_rejects_file_when_every_row_is_invalid(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "invalid.csv").write_text(
+        "ruc,provider_name,sanction_id\n123,Documento invalido,OSCE-INVALID\n",
+        encoding="latin-1",
+    )
+    pipeline = PeOsceSanctionsPipeline(driver=MagicMock(), data_dir=str(tmp_path))  # type: ignore[arg-type]
+    pipeline.extract()
+
+    with pytest.raises(ValueError, match="no valid sanction rows"):
+        pipeline.transform()
+
+
+def test_transform_skips_incomplete_rows_when_valid_rows_exist(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "sanctions.csv").write_text(
+        "\n".join(
+            [
+                "ruc,provider_name,sanction_id",
+                "123,Documento invalido,OSCE-INVALID",
+                "20123456789,Resolucion ausente,",
+                "20654321987,Proveedor valido,OSCE-VALID",
+            ],
+        ),
+        encoding="latin-1",
+    )
+    pipeline = PeOsceSanctionsPipeline(driver=MagicMock(), data_dir=str(tmp_path))  # type: ignore[arg-type]
+    pipeline.extract()
+    pipeline.transform()
+
+    assert [row["sanction_id"] for row in pipeline.sanctions] == ["OSCE-VALID"]
+    assert [row["ruc"] for row in pipeline.providers] == ["20654321987"]
+
+
 def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
     raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
     raw_dir.mkdir(parents=True)
@@ -99,7 +242,8 @@ def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
         "\n".join(
             [
                 "FECHA_CORTE|RUC|NOMBRE_RAZONODENOMINACIONSOCIAL|FECHA_INICIO|FECHA_FIN|NUMERO_RESOLUCION|ID_MOTIVO_INFRACCION|DE_MOTIVO_INFRACCION",
-                "20260404|20100994128|CONSTRUCTORA DOS DE MAYO S.A.|19980806||074-1998-TL|12|RESCISION ADMINISTRATIVA DEL CONTRATO",
+                "20260404|20100994128|CONSTRUCTORA DOS DE MAYO S.A.|19980806||"
+                "074-1998-TL|12|RESCISION ADMINISTRATIVA DEL CONTRATO",
             ],
         ),
         encoding="latin-1",
@@ -109,8 +253,11 @@ def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
         "\n".join(
             [
                 "FECHA_CORTE|RUC_DNI|NOMBRE_RAZONODENOMINACIONSOCIAL|ORGANO_JURISDICCIONAL|NUMERO_RESOLUCION|FECHA_INICIO|FECHA_FIN",
-                "20260401|10040039711|BARRETO MARCELO TEODORO|Corte Superior de Justicia de Pasco|SENTENCIA DE FECHA 28.04.2017|20170428|20250428",
-                "20260401|1010900768|JOSE ANTONIO CORONADO HURTADO|Lima Norte|s/n de fecha 23.08.2018|20190214|20240214",
+                "20260401|10040039711|BARRETO MARCELO TEODORO|"
+                "Corte Superior de Justicia de Pasco|SENTENCIA DE FECHA 28.04.2017|"
+                "20170428|20250428",
+                "20260401|1010900768|JOSE ANTONIO CORONADO HURTADO|Lima Norte|"
+                "s/n de fecha 23.08.2018|20190214|20240214",
             ],
         ),
         encoding="latin-1",
@@ -134,3 +281,4 @@ def test_transform_raw_files_handles_tcp_and_judicial(tmp_path: Path) -> None:
     by_source = {row["sanction_source"]: row for row in rows}
     assert by_source["OSCE_TCP"]["ruc"] == "20100994128"
     assert by_source["PODER_JUDICIAL"]["ruc"] == "10040039711"
+    assert all(row["source_url"] for row in rows)
