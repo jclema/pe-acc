@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import functools
+import hashlib
+import json
 import logging
 import os
 from pathlib import Path
@@ -22,7 +24,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_REGISTRY_PATH = _REPO_ROOT / "docs" / "source_registry_pe_v1.csv"
 _SUPPORTED_DELIMITERS = ("|", ",")
 _DOCUMENT_COLUMNS = ("ruc", "RUC", "RUC_DNI", "RUC/DNI")
-_RESOLUTION_COLUMNS = ("sanction_id", "NUMERO_RESOLUCION", "NumeroResolucion")
+_RESOLUTION_COLUMNS = (
+    "resolution_number", "sanction_id", "NUMERO_RESOLUCION", "NumeroResolucion",
+)
 
 
 @functools.lru_cache(maxsize=8)
@@ -188,6 +192,7 @@ class PeOsceSanctionsPipeline(Pipeline):
         with self.normalized_csv_path.open("w", encoding="utf-8", newline="") as f:
             fieldnames = [
                 "sanction_id",
+                "resolution_number",
                 "ruc",
                 "provider_name",
                 "sanction_source",
@@ -207,6 +212,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 writer.writerow(
                     {
                         "sanction_id": sanction.get("sanction_id", ""),
+                        "resolution_number": sanction.get("resolution_number", ""),
                         "ruc": sanction.get("ruc", ""),
                         "provider_name": sanction.get("provider_name", ""),
                         "sanction_source": sanction.get("sanction_source", ""),
@@ -269,7 +275,14 @@ class PeOsceSanctionsPipeline(Pipeline):
         resolution = self._first_value(raw_row, *_RESOLUTION_COLUMNS)
         if not resolution:
             return None, None, None
-        sanction_id = resolution
+        # Encode components unambiguously; mutable provenance is not part of identity.
+        identity = json.dumps(
+            [self.source_id, sanction_source, sanction_type, doc, resolution],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        sanction_id = f"{self.source_id}:v1:{digest}"
         source_url = self._first_value(raw_row, "source_url") or _registry_source_url(
             self.source_id,
         )
@@ -370,7 +383,7 @@ class PeOsceSanctionsPipeline(Pipeline):
             missing_groups.append("RUC (ruc/RUC/RUC_DNI/RUC/DNI)")
         if not columns.intersection(_RESOLUTION_COLUMNS):
             missing_groups.append(
-                "resolution (sanction_id/NUMERO_RESOLUCION/NumeroResolucion)",
+                "resolution (resolution_number/sanction_id/NUMERO_RESOLUCION/NumeroResolucion)",
             )
         if missing_groups:
             msg = f"{file_path}: missing required OSCE columns: {', '.join(missing_groups)}"

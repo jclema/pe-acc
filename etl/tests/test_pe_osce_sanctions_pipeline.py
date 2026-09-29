@@ -47,8 +47,109 @@ def test_transform_keeps_ruc_linkage() -> None:
 
     rel = pipeline.provider_sanctions[0]
     assert rel["source_key"] == "20123456789"
-    assert rel["target_key"] == "OSCE-001"
+    assert rel["target_key"] == pipeline.sanctions[0]["sanction_id"]
+    assert pipeline.sanctions[0]["resolution_number"] == "OSCE-001"
     assert rel["confidence"] == 1.0
+
+
+def _collision_rows() -> list[dict[str, str]]:
+    return [
+        {
+            "ruc": ruc,
+            "provider_name": name,
+            "sanction_id": "SENTENCIA DE FECHA 01.01.2020",
+            "sanction_type": "MANDATO_JUDICIAL",
+            "source_url": f"https://example.gob.pe/osce/{ruc}",
+        }
+        for ruc, name in [("20123456789", "Proveedor Uno"), ("20654321987", "Proveedor Dos")]
+    ]
+
+
+@pytest.mark.parametrize("raw_csv", [False, True])
+def test_same_resolution_keeps_provider_sanctions_separate(
+    tmp_path: Path, raw_csv: bool,
+) -> None:
+    pipeline = PeOsceSanctionsPipeline(driver=MagicMock(), data_dir=str(tmp_path))
+    rows = _collision_rows()
+    if raw_csv:
+        raw_dir = tmp_path / "raw" / "pe" / "osce_sanctions"
+        raw_dir.mkdir(parents=True)
+        pd.DataFrame(rows).to_csv(raw_dir / "judicial.csv", index=False)
+        pipeline.extract()
+    else:
+        pipeline._raw_sanctions = pd.DataFrame(rows)
+    pipeline.transform()
+
+    assert len(pipeline.providers) == len(pipeline.sanctions) == 2
+    assert pipeline.rows_loaded == 2
+    sanctions = {row["sanction_id"]: row for row in pipeline.sanctions}
+    assert len(sanctions) == 2
+    for relationship, original in zip(pipeline.provider_sanctions, rows, strict=True):
+        sanction = sanctions[relationship["target_key"]]
+        assert sanction["ruc"] == relationship["source_key"] == original["ruc"]
+        assert sanction["provider_name"] == original["provider_name"].upper()
+        assert sanction["source_url"] == original["source_url"]
+        assert sanction["resolution_number"] == original["sanction_id"]
+        assert sanction["sanction_id"].startswith("osce_sanctions:v1:")
+    if pipeline.normalized_csv_path:
+        with pipeline.normalized_csv_path.open(encoding="utf-8", newline="") as csv_file:
+            exported = list(csv.DictReader(csv_file))
+        assert {row["sanction_id"] for row in exported} == set(sanctions)
+        assert all(row["resolution_number"] == rows[0]["sanction_id"] for row in exported)
+
+
+def test_sanction_ids_are_stable_across_reprocessing_and_row_order() -> None:
+    first = _make_pipeline()
+    rows = _collision_rows()
+    first._raw_sanctions = pd.DataFrame(rows)
+    first.transform()
+    expected = {row["ruc"]: row["sanction_id"] for row in first.sanctions}
+    first.transform()
+    assert {row["ruc"]: row["sanction_id"] for row in first.sanctions} == expected
+
+    second = _make_pipeline()
+    second._raw_sanctions = pd.DataFrame(list(reversed(rows)) + [rows[0]])
+    second.transform()
+    assert {row["ruc"]: row["sanction_id"] for row in second.sanctions} == expected
+    assert len(expected) == 2
+
+
+@pytest.mark.parametrize(
+    "change", [{"source_kind": "judicial"}, {"sanction_type": "OTRO_TIPO"},
+               {"sanction_id": "OTRA RESOLUCION"}],
+)
+def test_sanction_identity_distinguishes_source_type_and_resolution(
+    change: dict[str, str],
+) -> None:
+    pipeline = _make_pipeline()
+    row = _collision_rows()[0]
+    _, original, _ = pipeline._normalize_sanction_row(row, 0)
+    _, changed, _ = pipeline._normalize_sanction_row(
+        row | change, 0, source_kind=change.get("source_kind"),
+    )
+    assert original is not None and changed is not None
+    assert original["sanction_id"] != changed["sanction_id"]
+
+
+def test_sanction_identity_ignores_file_name_and_mutable_metadata() -> None:
+    pipeline = _make_pipeline()
+    row = _collision_rows()[0]
+    _, original, _ = pipeline._normalize_sanction_row(row, 0, source_file="original.csv")
+    _, changed, _ = pipeline._normalize_sanction_row(
+        row | {"provider_name": "Nombre actualizado", "source_url": "https://example.gob.pe/new",
+               "extraction_date": "2026-09-29"},
+        99, source_file="renamed.csv",
+    )
+    assert original is not None and changed is not None
+    assert original["sanction_id"] == changed["sanction_id"]
+
+
+def test_original_resolution_takes_precedence_over_technical_id() -> None:
+    pipeline = _make_pipeline()
+    row = _collision_rows()[0] | {"resolution_number": "RESOLUCION ORIGINAL"}
+    pipeline._raw_sanctions = pd.DataFrame([row])
+    pipeline.transform()
+    assert pipeline.sanctions[0]["resolution_number"] == "RESOLUCION ORIGINAL"
 
 
 def test_transform_keeps_row_source_url() -> None:
@@ -109,7 +210,7 @@ def test_transform_maps_real_tcp_columns() -> None:
     assert len(pipeline.providers) == 1
     assert len(pipeline.sanctions) == 1
     sanction = pipeline.sanctions[0]
-    assert sanction["sanction_id"] == "074-1998-TL"
+    assert sanction["resolution_number"] == "074-1998-TL"
     assert sanction["sanction_source"] == "OSCE_TCP"
     assert sanction["date_start"] == "1998-08-06"
     assert sanction["extraction_date"] == "2026-04-04"
@@ -162,7 +263,7 @@ def test_transform_raw_files_handles_comma_delimiter(tmp_path: Path) -> None:
     pipeline.transform()
 
     assert len(pipeline.sanctions) == 1
-    assert pipeline.sanctions[0]["sanction_id"] == "OSCE-001"
+    assert pipeline.sanctions[0]["resolution_number"] == "OSCE-001"
     assert pipeline.sanctions[0]["type"] == "INHABILITACION"
 
 
@@ -230,7 +331,7 @@ def test_transform_skips_incomplete_rows_when_valid_rows_exist(tmp_path: Path) -
     pipeline.extract()
     pipeline.transform()
 
-    assert [row["sanction_id"] for row in pipeline.sanctions] == ["OSCE-VALID"]
+    assert [row["resolution_number"] for row in pipeline.sanctions] == ["OSCE-VALID"]
     assert [row["ruc"] for row in pipeline.providers] == ["20654321987"]
 
 
