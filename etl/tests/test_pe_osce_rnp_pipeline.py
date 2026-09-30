@@ -94,3 +94,10 @@ def test_schema_is_validated_for_each_export(tmp_path: Path, filename: str) -> N
     path.write_bytes((FIXTURES / filename).read_bytes().replace(b"Tipo_Documento", b"Wrong"))
     with pytest.raises(ValueError):
         read_rnp(path)
+
+
+def test_runner_registration() -> None:
+    from bracc_etl.runner import PIPELINES
+
+    assert PIPELINES["pe_osce_rnp"] is PeOsceRnpPipeline
+    assert PeOsceRnpPipeline.source_id == "osce_rnp"
