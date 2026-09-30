@@ -36,6 +36,8 @@ Notes:
 
 ## BYO-Data Ingestion
 
+Para RNP, consultar el [contrato y verificación aislada de OSCE RNP](osce_rnp.md).
+
 Use ETL directly:
 
 ```bash

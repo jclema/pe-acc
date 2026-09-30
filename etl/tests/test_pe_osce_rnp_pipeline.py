@@ -11,14 +11,19 @@ FIXTURES = Path(__file__).parent / "fixtures" / "pe_osce_rnp"
 
 
 @pytest.mark.parametrize("filename", FILES)
-def test_exports_preserve_identity_and_provenance(filename: str) -> None:
-    rows, count = read_rnp(FIXTURES / filename)
+@pytest.mark.parametrize("delimiter", ["|", ","])
+def test_exports_preserve_identity_and_provenance(
+    filename: str, delimiter: str, tmp_path: Path
+) -> None:
+    path = tmp_path / filename
+    path.write_bytes((FIXTURES / filename).read_bytes().replace(b"|", delimiter.encode()))
+    rows, count = read_rnp(path)
     assert count == len(rows)
     assert all(row["type"] == FILES[filename][0] for row in rows)
     assert all(
         row["source_dataset"] == filename and row["source_url"] == SOURCE_URL for row in rows
     )
-    digest = hashlib.sha256((FIXTURES / filename).read_bytes()).hexdigest()
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
     assert all(row["file_sha256"] == digest for row in rows)
     if filename == "Socios.csv":
         assert rows[0]["document"] == "00000001"
@@ -63,7 +68,7 @@ def test_invalid_identity_is_skipped(tmp_path: Path, field: str, value: str) -> 
     "content",
     [
         "Tipo_Documento|Nro_Documento\n",
-        "Tipo_Documento,Tipo_Documento\n",
+        (FIXTURES / "Socios.csv").read_text().splitlines()[0] + "|Tipo_Documento\n",
         (FIXTURES / "Socios.csv").read_text().splitlines()[0] + "\nDNI|1|X\n",
         (FIXTURES / "Socios.csv").read_text().splitlines()[0] + "\nDNI|1|X|123|extra\n",
     ],
