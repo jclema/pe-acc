@@ -164,7 +164,7 @@ function ControlsSidebarInner({
                           : "var(--text-muted)",
                       }}
                     />
-                    <span className={styles.toggleLabel}>{type}</span>
+                    <span className={styles.toggleLabel}>{t(`relationship.${type}`, type)}</span>
                     <span className={styles.count}>{count}</span>
                   </button>
                 );

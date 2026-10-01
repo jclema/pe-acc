@@ -46,3 +46,31 @@ Usar primero una base aislada. Respaldar y verificar el destino antes de una car
 Inspección: `MATCH (a)-[r]->(p:Provider) WHERE r.source='osce_rnp' RETURN a,p,r;`.
 Rollback: detener RNP y restaurar el backup previo en el destino; revertir código
 no elimina datos. No borrar proveedores compartidos ni ejecutar bootstrap destructivo.
+## Revisión en el explorador del grafo
+
+El frontend permite filtrar «Socio de», «Representa a» y «Miembro de órgano
+de administración de». Al seleccionar un vínculo RNP con procedencia, el detalle
+muestra nombre y cargo declarados (si existen), archivo de origen, enlace a la
+fuente y huella SHA-256 desplegable. No presenta un porcentaje de confianza ni
+valor monetario para estas declaraciones. Los vínculos anteriores conservan
+su detalle habitual.
+
+La interfaz no carga los CSV ni cambia la consulta pública. Sin una carga RNP
+previa, no aparecen vínculos nuevos. En modo público siguen excluidas las
+personas; solo se muestran los vínculos corporativos que devuelve la API.
+Varios vínculos entre los mismos nodos pueden superponerse en el dibujo:
+desactiva los otros tipos de relación para inspeccionar cada declaración.
+
+Para comprobar la interfaz:
+
+```bash
+cd frontend
+npm ci
+npm test
+npm run build
+npm run dev
+```
+
+Con la API y Neo4j locales disponibles, abre el grafo de un proveedor con RNP
+cargado, alterna los tres filtros y selecciona un vínculo. Comprueba el cargo,
+archivo, fuente y huella, y que la sanción y el nombre anteriores se conservan.

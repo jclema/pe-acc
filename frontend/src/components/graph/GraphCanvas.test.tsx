@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -65,6 +65,19 @@ const defaultProps = {
 };
 
 describe("GraphCanvas", () => {
+  it("opens RNP provenance when its graph link is clicked", () => {
+    render(<GraphCanvas {...defaultProps} />);
+    const onLinkClick = capturedProps.onLinkClick as (edge: unknown) => void;
+    act(() => onLinkClick({
+      type: "REPRESENTA_A", source: "p1", target: "p2",
+      properties: { cargo: "REPRESENTANTE", source_dataset: "representantes.csv",
+        file_sha256: "a".repeat(64) },
+    }));
+    expect(screen.getByText("REPRESENTANTE")).toBeInTheDocument();
+    expect(screen.getByText("representantes.csv")).toBeInTheDocument();
+    expect(screen.queryByText("graph.edge.confidence")).not.toBeInTheDocument();
+  });
+
   it("shows all RNP links initially and hides only the toggled relationship", () => {
     useGraphExplorerStore.getState().reset();
     const store = useGraphExplorerStore.getState();
