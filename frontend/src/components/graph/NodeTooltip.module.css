@@ -7,7 +7,7 @@
   border: 1px solid rgba(148, 163, 154, 0.15);
   border-radius: 10px;
   backdrop-filter: blur(8px);
-  z-index: var(--z-dropdown);
+  z-index: var(--z-modal);
   pointer-events: none;
   display: flex;
   flex-direction: column;
