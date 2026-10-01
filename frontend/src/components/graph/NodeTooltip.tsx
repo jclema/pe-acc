@@ -19,6 +19,7 @@ interface NodeTooltipProps {
   node: TooltipNode | null;
   x: number;
   y: number;
+  onClose?: () => void;
 }
 
 function formatSanctionType(value: string | null): string | null {
@@ -58,7 +59,7 @@ function safeSourceUrl(value: unknown): string | null {
   }
 }
 
-function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
+function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
   const { t } = useTranslation();
 
   if (!node) return null;
@@ -89,10 +90,11 @@ function NodeTooltipInner({ node, x, y }: NodeTooltipProps) {
 
   return (
     <div
-      className={styles.tooltip}
-      style={{ left: x, top: y }}
+      className={`${styles.tooltip} ${onClose ? styles.pinned : ""}`}
+      style={onClose ? undefined : { left: x, top: y }}
     >
       <div className={styles.header}>
+        {onClose && <button className={styles.close} aria-label={t("graph.closeCard")} onClick={onClose}>&times;</button>}
         <span className={styles.dot} style={{ backgroundColor: color }} />
         <span className={styles.type}>
           {t(`entity.${node.type}`, node.type)}

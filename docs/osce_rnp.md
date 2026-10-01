@@ -78,3 +78,6 @@ Para usar el proyecto completo: `docker compose up -d --build neo4j api frontend
 y abre `http://localhost:3000`. Después de que el grafo se estabilice, comprueba
 zoom, desplazamiento, selección y filtros. El redibujado inactivo se pausa
 automáticamente sin desactivar la navegación.
+
+Un clic en un nodo fija su ficha ampliada para abrir la fuente sin mantener el cursor.
+Ciérrala con su botón o con un clic en el fondo; ocultar el nodo también la cierra.

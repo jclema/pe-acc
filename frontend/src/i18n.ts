@@ -285,6 +285,7 @@ const resources = {
         PARTICIPOU_CPI: "Participou de CPI",
       },
       graph: {
+        closeCard: "Cerrar ficha",
         depth: "Profundidad",
         entityTypes: "Tipos de entidad",
         relationshipTypes: "Tipos de relación",
@@ -757,6 +758,7 @@ const resources = {
         PARTICIPOU_CPI: "Participated in CPI",
       },
       graph: {
+        closeCard: "Close card",
         depth: "Depth",
         entityTypes: "Entity types",
         relationshipTypes: "Relationship types",
