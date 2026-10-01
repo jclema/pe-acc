@@ -1,5 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { useImperativeHandle, type Ref } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -23,11 +24,17 @@ if (typeof document.exitFullscreen === "undefined") {
 }
 
 let capturedProps: Record<string, unknown> = {};
+const graphMethods = vi.hoisted(() => ({
+  d3Force: vi.fn(), d3ReheatSimulation: vi.fn(),
+  zoomToFit: vi.fn(), pauseAnimation: vi.fn(), zoom: vi.fn(),
+}));
+afterEach(() => { vi.clearAllMocks(); vi.useRealTimers(); });
 
 vi.mock("react-force-graph-2d", () => ({
   __esModule: true,
   default: vi.fn((props: Record<string, unknown>) => {
     capturedProps = props;
+    useImperativeHandle(props.ref as Ref<unknown>, () => graphMethods);
     return <div data-testid="force-graph" />;
   }),
 }));
@@ -65,6 +72,35 @@ const defaultProps = {
 };
 
 describe("GraphCanvas", () => {
+  it("keeps navigation enabled after layout settles and cancels pending work on unmount", () => {
+    vi.useFakeTimers();
+    const context = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    const { rerender, unmount } = render(<GraphCanvas {...defaultProps} />);
+    const data = capturedProps.graphData;
+    act(() => {
+      (capturedProps.onEngineStop as () => void)();
+      vi.advanceTimersByTime(1000);
+      (capturedProps.onEngineStop as () => void)();
+    });
+    expect(graphMethods.zoomToFit).toHaveBeenCalledOnce();
+    expect(graphMethods.pauseAnimation).not.toHaveBeenCalled();
+    expect(capturedProps.autoPauseRedraw).toBe(true);
+    act(() => screen.getByTitle("graph.zoomIn").click());
+    expect(graphMethods.zoom).toHaveBeenCalledWith(1.5, 300);
+    rerender(<GraphCanvas {...defaultProps} enabledRelTypes={new Set()} />);
+    expect(capturedProps.graphData).toBe(data);
+    expect(graphMethods.pauseAnimation).not.toHaveBeenCalled();
+    rerender(<GraphCanvas {...defaultProps} data={{ ...sampleData, nodes: [...sampleData.nodes] }} />);
+    act(() => (capturedProps.onEngineStop as () => void)());
+    act(() => (capturedProps.onNodeHover as (node: unknown) => void)({ id: "n2" }));
+    unmount();
+    expect(graphMethods.pauseAnimation).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(graphMethods.zoomToFit).toHaveBeenCalledOnce();
+    context.mockRestore();
+  });
+
   it("opens RNP provenance when its graph link is clicked", () => {
     render(<GraphCanvas {...defaultProps} />);
     const onLinkClick = capturedProps.onLinkClick as (edge: unknown) => void;

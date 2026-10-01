@@ -74,3 +74,7 @@ npm run dev
 Con la API y Neo4j locales disponibles, abre el grafo de un proveedor con RNP
 cargado, alterna los tres filtros y selecciona un vínculo. Comprueba el cargo,
 archivo, fuente y huella, y que la sanción y el nombre anteriores se conservan.
+Para usar el proyecto completo: `docker compose up -d --build neo4j api frontend`
+y abre `http://localhost:3000`. Después de que el grafo se estabilice, comprueba
+zoom, desplazamiento, selección y filtros. El redibujado inactivo se pausa
+automáticamente sin desactivar la navegación.
