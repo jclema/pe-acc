@@ -233,6 +233,8 @@ const resources = {
       },
       relationship: {
         SOCIO_DE: "Socio de",
+        REPRESENTA_A: "Representa a",
+        MIEMBRO_ORGANO_DE: "Miembro de órgano de administración de",
         DOOU: "Donó a",
         CANDIDATO_EM: "Candidato en",
         VENCEU: "Ganó",
@@ -697,6 +699,8 @@ const resources = {
       },
       relationship: {
         SOCIO_DE: "Partner of",
+        REPRESENTA_A: "Represents",
+        MIEMBRO_ORGANO_DE: "Member of governing body of",
         DOOU: "Donated to",
         CANDIDATO_EM: "Candidate in",
         VENCEU: "Won",

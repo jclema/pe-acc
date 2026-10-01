@@ -12,6 +12,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 import type { GraphData } from "@/api/client";
+import { useGraphExplorerStore } from "@/stores/graphExplorer";
 
 // Polyfill for jsdom
 if (typeof Element.prototype.requestFullscreen === "undefined") {
@@ -64,6 +65,35 @@ const defaultProps = {
 };
 
 describe("GraphCanvas", () => {
+  it("shows all RNP links initially and hides only the toggled relationship", () => {
+    useGraphExplorerStore.getState().reset();
+    const store = useGraphExplorerStore.getState();
+    const edges = ["SOCIO_DE", "REPRESENTA_A", "MIEMBRO_ORGANO_DE"].map((type) => ({
+      id: type, source: "p1", target: "p2", type,
+      properties: {}, confidence: 1, sources: [],
+    }));
+    const data: GraphData = {
+      nodes: ["p1", "p2"].map((id) => ({
+        id, label: id, type: "provider", properties: {}, sources: [],
+      })),
+      edges,
+    };
+    const { rerender } = render(
+      <GraphCanvas {...defaultProps} data={data} centerId="p2"
+        enabledTypes={store.enabledTypes} enabledRelTypes={store.enabledRelTypes} />,
+    );
+    const visible = () => capturedProps.linkVisibility as (edge: typeof edges[number]) => boolean;
+    expect(edges.every(visible())).toBe(true);
+    store.toggleRelType("REPRESENTA_A");
+    rerender(
+      <GraphCanvas {...defaultProps} data={data} centerId="p2"
+        enabledTypes={store.enabledTypes}
+        enabledRelTypes={useGraphExplorerStore.getState().enabledRelTypes} />,
+    );
+    expect(edges.map(visible())).toEqual([true, false, true]);
+    useGraphExplorerStore.getState().reset();
+  });
+
   it("renders ForceGraph2D component", () => {
     render(<GraphCanvas {...defaultProps} />);
     expect(screen.getByTestId("force-graph")).toBeInTheDocument();
