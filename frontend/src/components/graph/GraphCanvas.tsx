@@ -99,6 +99,7 @@ function GraphCanvasInner({
 
   // Tooltip state
   const [tooltip, setTooltip] = useState<{ node: GraphNodeObject; x: number; y: number } | null>(null);
+  const tooltipPinned = useRef(false);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Visible node IDs (for link visibility check)
@@ -110,6 +111,13 @@ function GraphCanvasInner({
     ),
     [data.nodes, enabledTypes, hiddenNodeIds],
   );
+
+  useEffect(() => {
+    if (tooltip && !visibleNodeIds.has(tooltip.node.id)) {
+      tooltipPinned.current = false;
+      setTooltip(null);
+    }
+  }, [data.nodes, visibleNodeIds, tooltip]);
 
   // Connection counts based on visible edges, stored in ref to avoid destabilizing graphData.
   // Using useEffect to keep the ref in sync without causing graphData to change on filter toggles.
@@ -259,6 +267,9 @@ function GraphCanvasInner({
     (node: GraphNodeObject) => {
       onNodeClick(node.id);
       setContextMenu(null);
+      if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+      tooltipPinned.current = true;
+      setTooltip({ node: { ...node, connectionCount: connectionCountsRef.current.get(node.id) ?? 0 }, x: 16, y: 16 });
     },
     [onNodeClick],
   );
@@ -266,6 +277,7 @@ function GraphCanvasInner({
   const handleNodeHover = useCallback(
     (node: GraphNodeObject | null) => {
       onNodeHover(node?.id ?? null);
+      if (tooltipPinned.current) return;
 
       if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
 
@@ -304,6 +316,9 @@ function GraphCanvasInner({
   );
 
   const handleBackgroundClick = useCallback(() => {
+    tooltipPinned.current = false;
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    setTooltip(null);
     onNodeDeselect();
     setContextMenu(null);
     setSelectedEdge(null);
@@ -318,29 +333,31 @@ function GraphCanvasInner({
   }, []);
 
   const fittedRef = useRef(false);
+  const fitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-fit once after initial layout
   useEffect(() => {
     fittedRef.current = false;
+    if (fitTimer.current) clearTimeout(fitTimer.current);
   }, [data]);
 
   const handleEngineStop = useCallback(() => {
     if (!fittedRef.current) {
       fittedRef.current = true;
-      setTimeout(() => {
+      fitTimer.current = setTimeout(() => {
         fgRef.current?.zoomToFit(300, 50);
-        // Defer pause until after zoomToFit animation completes
-        setTimeout(() => fgRef.current?.pauseAnimation(), 350);
       }, 200);
-    } else {
-      fgRef.current?.pauseAnimation();
     }
   }, []);
 
   // Cleanup: pause animation on unmount to stop RAF loop surviving navigation
   useEffect(() => {
     const fg = fgRef.current;
-    return () => { fg?.pauseAnimation(); };
+    return () => {
+      if (fitTimer.current) clearTimeout(fitTimer.current);
+      if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+      fg?.pauseAnimation();
+    };
   }, []);
 
   // Stable canvas render callback — avoids ForceGraph2D re-initializing render pipeline
@@ -449,6 +466,8 @@ function GraphCanvasInner({
           backgroundColor="rgba(0,0,0,0)"
           linkDirectionalParticles={0}
           cooldownTime={4000}
+          // Stop idle redraws while preserving pointer events and zoom.
+          autoPauseRedraw={true}
           d3AlphaDecay={0.03}
           d3VelocityDecay={0.5}
           warmupTicks={30}
@@ -480,6 +499,10 @@ function GraphCanvasInner({
             }}
             x={tooltip.x}
             y={tooltip.y}
+            onClose={tooltipPinned.current ? () => {
+              tooltipPinned.current = false;
+              setTooltip(null);
+            } : undefined}
           />
         )}
 

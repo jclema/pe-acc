@@ -56,3 +56,21 @@
   color: var(--text-muted);
   font-style: italic;
 }
+
+.field { display: contents; }
+
+.sourceLink { color: var(--accent); }
+
+.sourceLink:focus-visible, .fingerprint summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.notice, .fingerprint {
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  margin-top: var(--space-sm);
+}
+
+.fingerprint summary { cursor: pointer; }
+.fingerprint code { display: block; overflow-wrap: anywhere; margin-top: var(--space-xs); }

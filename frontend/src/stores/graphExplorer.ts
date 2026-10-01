@@ -77,6 +77,8 @@ const INITIAL_REL_TYPES = new Set([
   "HAS_AWARD",
   "WINNER",
   "SOCIO_DE",
+  "REPRESENTA_A",
+  "MIEMBRO_ORGANO_DE",
   "DOOU",
   "CANDIDATO_EM",
   "VENCEU",

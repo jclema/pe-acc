@@ -233,6 +233,8 @@ const resources = {
       },
       relationship: {
         SOCIO_DE: "Socio de",
+        REPRESENTA_A: "Representa a",
+        MIEMBRO_ORGANO_DE: "Miembro de órgano de administración de",
         DOOU: "Donó a",
         CANDIDATO_EM: "Candidato en",
         VENCEU: "Ganó",
@@ -283,6 +285,7 @@ const resources = {
         PARTICIPOU_CPI: "Participou de CPI",
       },
       graph: {
+        closeCard: "Cerrar ficha",
         depth: "Profundidad",
         entityTypes: "Tipos de entidad",
         relationshipTypes: "Tipos de relación",
@@ -309,6 +312,12 @@ const resources = {
           confidence: "Confianza",
           sources: "Fuentes",
           noValue: "Sin valor monetario",
+          declared_name: "Nombre declarado",
+          cargo: "Cargo declarado",
+          source_dataset: "Archivo de origen",
+          openSource: "Abrir fuente oficial",
+          fileHash: "Huella del archivo (SHA-256)",
+          rnpNotice: "Vínculo declarado en RNP. Puede cambiar con las actualizaciones de la fuente.",
         },
         legend: {
           title: "Leyenda",
@@ -697,6 +706,8 @@ const resources = {
       },
       relationship: {
         SOCIO_DE: "Partner of",
+        REPRESENTA_A: "Represents",
+        MIEMBRO_ORGANO_DE: "Member of governing body of",
         DOOU: "Donated to",
         CANDIDATO_EM: "Candidate in",
         VENCEU: "Won",
@@ -747,6 +758,7 @@ const resources = {
         PARTICIPOU_CPI: "Participated in CPI",
       },
       graph: {
+        closeCard: "Close card",
         depth: "Depth",
         entityTypes: "Entity types",
         relationshipTypes: "Relationship types",
@@ -773,6 +785,12 @@ const resources = {
           confidence: "Confidence",
           sources: "Sources",
           noValue: "No monetary value",
+          declared_name: "Declared name",
+          cargo: "Declared role",
+          source_dataset: "Source file",
+          openSource: "Open official source",
+          fileHash: "File fingerprint (SHA-256)",
+          rnpNotice: "Relationship declared in RNP. It may change with source updates.",
         },
         legend: {
           title: "Legend",
