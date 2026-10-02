@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useGraphExplorerStore } from "./graphExplorer";
 
 const INITIAL_ENTITY_TYPES = [
+  "provider",
+  "entity",
+  "procurementprocess",
+  "award",
+  "budgetexecution",
   "person",
   "company",
   "election",
@@ -36,7 +41,13 @@ const INITIAL_ENTITY_TYPES = [
 ];
 
 const INITIAL_REL_TYPES = [
+  "HAS_SANCTION",
+  "PUBLISHED",
+  "HAS_AWARD",
+  "WINNER",
   "SOCIO_DE",
+  "REPRESENTA_A",
+  "MIEMBRO_ORGANO_DE",
   "DOOU",
   "CANDIDATO_EM",
   "VENCEU",

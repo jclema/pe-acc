@@ -5,22 +5,22 @@ description = "PE-ACC API - Peruvian public integrity graph"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.142.2",
     "uvicorn[standard]>=0.34.0",
     "neo4j>=5.27.0",
     "pydantic>=2.10.0",
-    "pydantic-settings>=2.7.0",
-    "PyJWT[crypto]>=2.12.0",
+    "pydantic-settings>=2.14.2",
+    "PyJWT[crypto]>=2.15.1",
     "bcrypt>=4.0.0",
     "slowapi>=0.1.9",
-    "python-multipart>=0.0.18",
-    "weasyprint>=62.0",
+    "python-multipart>=0.0.31",
+    "weasyprint>=70.0",
     "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
     "mypy>=1.14.0",

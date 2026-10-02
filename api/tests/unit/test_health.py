@@ -96,6 +96,11 @@ async def test_meta_sources(client: AsyncClient) -> None:
 async def test_meta_stats(client: AsyncClient) -> None:
     mock_record = {
         "total_nodes": 87_500_000,
+        "provider_count": 0,
+        "public_entity_count": 12,
+        "procurement_process_count": 34,
+        "award_count": 0,
+        "budget_execution_count": 56,
         "total_relationships": 53_100_000,
         "person_count": 2_450_000,
         "company_count": 58_500_000,
@@ -157,6 +162,11 @@ async def test_meta_stats(client: AsyncClient) -> None:
 
     assert data["total_nodes"] == 87_500_000
     assert data["total_relationships"] == 53_100_000
+    assert data["provider_count"] == 0
+    assert data["public_entity_count"] == 12
+    assert data["procurement_process_count"] == 34
+    assert data["award_count"] == 0
+    assert data["budget_execution_count"] == 56
     assert data["person_count"] == 2_450_000
     assert data["company_count"] == 58_500_000
     assert data["health_count"] == 602_000

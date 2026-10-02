@@ -4,6 +4,11 @@ from httpx import AsyncClient
 from bracc.services.baseline_service import BASELINE_QUERIES
 
 
+@pytest.fixture(name="client")
+def isolated_router_client(legacy_client: AsyncClient) -> AsyncClient:
+    return legacy_client
+
+
 def test_baseline_query_files_exist() -> None:
     from bracc.services.neo4j_service import CypherLoader
 

@@ -21,6 +21,9 @@ La transformación y los IDs de sanciones son los existentes. Los enlaces usan
 la procedencia de cada fila o la página registrada. La carga hace MERGE, no borra
 sanciones ausentes de una publicación posterior. No cambia restricciones públicas.
 
+Depende de #18, apilado sobre #17. Antes de cargar datos reales, completar el
+[preflight de migración](osce_migration.md), verificar el respaldo y aprobar el alcance.
+
 ## Pruebas y ejecución
 
 Desde `etl/`, con Docker disponible para la integración aislada:

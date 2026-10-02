@@ -49,6 +49,8 @@ export const relationshipColors: Record<string, string> = {
   HAS_AWARD: "#F2CC8F",
   WINNER: "#84CC16",
   SOCIO_DE: "#4EA8DE",
+  REPRESENTA_A: "#81B29A",
+  MIEMBRO_ORGANO_DE: "#B8A9C9",
   DOOU: "#81B29A",
   CANDIDATO_EM: "#81B29A",
   VENCEU: "#F2CC8F",

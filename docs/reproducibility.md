@@ -36,6 +36,8 @@ Notes:
 
 ## BYO-Data Ingestion
 
+Para RNP, consultar el [contrato y verificación aislada de OSCE RNP](osce_rnp.md).
+
 Use ETL directly:
 
 ```bash
@@ -70,6 +72,8 @@ deduplication may already have discarded another provider's sanction properties.
 Rebuild from the original complete raw source files, not from the old normalized
 CSV or graph alone. Keep judicial filenames recognizable by `judicial`.
 
+See [migration preflight and isolated rehearsal](osce_migration.md) before maintenance.
+
 ### Controlled reload
 
 1. Before broader judicial ingestion, prepare the complete previously loaded
@@ -85,7 +89,9 @@ CSV or graph alone. Keep judicial filenames recognizable by `judicial`.
      AND NOT (coalesce(s.sanction_id, '') STARTS WITH 'osce_sanctions:v1:')
    OPTIONAL MATCH (p:Provider)-[:HAS_SANCTION]->(s)
    RETURN count(DISTINCT s) AS legacy_nodes, count(p) AS links,
-     sum(CASE WHEN p.ruc <> s.ruc THEN 1 ELSE 0 END) AS mismatched_links;
+     sum(CASE WHEN p IS NULL THEN 0
+       WHEN p.ruc IS NOT NULL AND s.ruc IS NOT NULL AND p.ruc = s.ruc THEN 0
+       ELSE 1 END) AS mismatched_links;
    ```
 
 4. Inspect other references. If this query returns rows, stop and review those
@@ -97,7 +103,8 @@ CSV or graph alone. Keep judicial filenames recognizable by `judicial`.
    WHERE s.source = 'osce_sanctions'
      AND NOT (coalesce(s.sanction_id, '') STARTS WITH 'osce_sanctions:v1:')
      AND (type(r) <> 'HAS_SANCTION'
-       OR coalesce(r.source, '') <> 'osce_sanctions' OR NOT n:Provider)
+       OR coalesce(r.source, '') <> 'osce_sanctions' OR NOT n:Provider
+       OR startNode(r) <> n OR endNode(r) <> s)
    RETURN s.sanction_id, type(r), labels(n), r.source;
    ```
 
@@ -107,17 +114,21 @@ CSV or graph alone. Keep judicial filenames recognizable by `judicial`.
 
    ```cypher
    MATCH (s:Sanction)
-   WHERE s.source = 'osce_sanctions'
+   WHERE elementId(s) IN $approved_legacy_ids
+     AND s.source = 'osce_sanctions'
      AND NOT (coalesce(s.sanction_id, '') STARTS WITH 'osce_sanctions:v1:')
      AND NOT EXISTS {
        MATCH (s)-[r]-(n)
        WHERE type(r) <> 'HAS_SANCTION'
          OR coalesce(r.source, '') <> 'osce_sanctions' OR NOT n:Provider
+         OR startNode(r) <> n OR endNode(r) <> s
      }
    DETACH DELETE s;
    ```
 
-6. Repeat step 3; legacy_nodes must be zero. Reload all raw inputs without
+6. Repeat step 3; legacy_nodes must be zero across the agreed full scope. The CLI below overwrites
+   existing Provider properties; use the provider-preserving reload in the migration
+   runbook during maintenance instead. For a fresh isolated graph, load inputs without
    `--limit`, using the corrected code and the intended URI/database:
 
    ```bash
