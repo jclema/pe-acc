@@ -17,8 +17,8 @@
 | `GET /api/v1/entity/{id}/connections` | Person/Partner targets filtered out |
 | `GET /api/v1/search` | Person/Partner results filtered out |
 | `GET /api/v1/graph/{entity_id}` | Person/Partner center blocked, person nodes filtered |
-| `GET /api/v1/patterns/{entity_id}` | `503` (`Pattern engine temporarily unavailable pending validation.`) |
-| `GET /api/v1/investigations/*` | `403` (`Investigation endpoints disabled in public mode`) |
+| `GET /api/v1/patterns/{entity_id}` | `404` (router not registered in PE-ACC) |
+| `GET /api/v1/investigations/*` | `404` (router not registered in PE-ACC) |
 | `GET /api/v1/public/meta` | Allowed |
 | `GET /api/v1/public/patterns/company/{cnpj_or_id}` | `503` while pattern engine is disabled |
 | `GET /api/v1/public/graph/company/{cnpj_or_id}` | Allowed |
@@ -27,3 +27,10 @@
 
 - `public_safe`: company/contract/sanction/aggregate entities allowed in public surface.
 - `restricted`: person-adjacent entities, filtered by default.
+
+## Retained upstream routers
+
+The baseline, emendas, investigations, and general patterns routers remain in
+source but are not registered in the PE-ACC app, in either public or private
+mode. Their unit tests use an isolated app; this does not expose those routes in
+production. The public patterns route listed above remains registered and gated.

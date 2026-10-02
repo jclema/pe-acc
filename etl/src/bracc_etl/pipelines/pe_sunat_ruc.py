@@ -43,13 +43,21 @@ class PeSunatRucPipeline(Pipeline):
             Path(self.data_dir) / "pe" / "sunat_ruc",
             Path(self.data_dir) / "sunat_ruc",
         ]
-        raw_dir = next((path for path in raw_dir_candidates if path.exists() and path.is_dir()), None)
+        raw_dir = next(
+            (path for path in raw_dir_candidates if path.exists() and path.is_dir()), None
+        )
         if raw_dir is None:
-            logger.warning("[%s] raw SUNAT directory not found in %s", self.name, raw_dir_candidates)
+            logger.warning(
+                "[%s] raw SUNAT directory not found in %s", self.name, raw_dir_candidates
+            )
             return
 
-        raw_csv_candidates = sorted([path for path in raw_dir.iterdir() if path.is_file() and path.suffix.lower() == ".csv"])
-        self.raw_csv_path = next((path for path in raw_csv_candidates if path.name != "providers.csv"), None)
+        raw_csv_candidates = sorted(
+            [path for path in raw_dir.iterdir() if path.is_file() and path.suffix.lower() == ".csv"]
+        )
+        self.raw_csv_path = next(
+            (path for path in raw_csv_candidates if path.name != "providers.csv"), None
+        )
         if self.raw_csv_path is not None:
             return
 
@@ -58,7 +66,9 @@ class PeSunatRucPipeline(Pipeline):
             Path(self.data_dir) / "pe" / "sunat_ruc" / "providers.csv",
             Path(self.data_dir) / "sunat_ruc" / "providers.csv",
         ]
-        self.normalized_csv_path = next((path for path in normalized_candidates if path.exists()), None)
+        self.normalized_csv_path = next(
+            (path for path in normalized_candidates if path.exists()), None
+        )
         if self.normalized_csv_path is not None:
             self._raw_providers = pd.read_csv(
                 self.normalized_csv_path,
@@ -76,7 +86,8 @@ class PeSunatRucPipeline(Pipeline):
 
         providers: list[dict[str, Any]] = []
         for _, row in self._raw_providers.iterrows():
-            provider = self._normalize_provider_row(row.to_dict())
+            raw_row = {str(key): value for key, value in row.to_dict().items()}
+            provider = self._normalize_provider_row(raw_row)
             if provider is None:
                 continue
             providers.append(provider)
@@ -151,7 +162,9 @@ class PeSunatRucPipeline(Pipeline):
             "name": legal_name,
             "trade_name": normalize_name(self._first_value(raw_row, "trade_name", "TRADE_NAME")),
             "tax_status": str(self._first_value(raw_row, "tax_status", "Estado", "ESTADO")).strip(),
-            "tax_condition": str(self._first_value(raw_row, "tax_condition", "Condicion", "CONDICION")).strip(),
+            "tax_condition": str(
+                self._first_value(raw_row, "tax_condition", "Condicion", "CONDICION")
+            ).strip(),
             "provider_type": provider_type,
             "ubigeo": strip_document(str(self._first_value(raw_row, "ubigeo", "UBIGEO")))[:6],
             "department": normalize_name(self._first_value(raw_row, "department", "Departamento")),
@@ -200,7 +213,9 @@ class PeSunatRucPipeline(Pipeline):
 
                 if normalized_rows:
                     if writer is None:
-                        writer = csv.DictWriter(out_file, fieldnames=list(normalized_rows[0].keys()))
+                        writer = csv.DictWriter(
+                            out_file, fieldnames=list(normalized_rows[0].keys())
+                        )
                     if not wrote_header:
                         writer.writeheader()
                         wrote_header = True

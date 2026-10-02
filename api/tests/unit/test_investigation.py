@@ -5,6 +5,12 @@ from httpx import AsyncClient
 
 from bracc.services.neo4j_service import CypherLoader
 
+
+@pytest.fixture(name="client")
+def isolated_router_client(legacy_client: AsyncClient) -> AsyncClient:
+    return legacy_client
+
+
 FAKE_PDF = b"%PDF-1.4 fake pdf content for testing"
 
 INVESTIGATION_CYPHER_FILES = [

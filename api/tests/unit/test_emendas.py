@@ -4,6 +4,11 @@ from httpx import AsyncClient
 from bracc.services.neo4j_service import CypherLoader
 
 
+@pytest.fixture(name="client")
+def isolated_router_client(legacy_client: AsyncClient) -> AsyncClient:
+    return legacy_client
+
+
 def _load_cypher(name: str) -> str:
     try:
         return CypherLoader.load(name)
