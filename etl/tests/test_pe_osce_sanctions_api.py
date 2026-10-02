@@ -318,6 +318,7 @@ def test_fallback_skips_invalid_managed_snapshot(tmp_path, monkeypatch, damage):
     else:
         (bad / NAMES[0]).unlink()
         (bad / NAMES[0]).symlink_to(valid[0].parent / NAMES[0])
+    (bad.parent / 'snapshot-dangling').symlink_to(bad.parent / 'missing')
     manifest.write_text(json.dumps(meta))
     p.raw_files = [bad / name for name in NAMES]
     p._report_extraction('fallback')

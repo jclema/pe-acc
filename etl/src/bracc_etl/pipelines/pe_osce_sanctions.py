@@ -250,6 +250,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 if self.raw_files:
                     return
         snapshots = Path(self.data_dir).glob("raw/pe/osce_sanctions/api/snapshot-*")
+        snapshots = (path for path in snapshots if not path.is_symlink())
         for snapshot in sorted(snapshots, key=lambda path: path.stat().st_mtime, reverse=True):
             files = [snapshot / name for name in (
                 "inhabilitaciones_judiciales.csv", "sancionados.csv",
