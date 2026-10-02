@@ -55,3 +55,12 @@ If network is unavailable, run the rest and report that `check-source-urls` was 
 - Fix root cause, not symptoms.
 - Re-run the smallest failing gate.
 - If a gate is flaky or externally blocked, document command, failure, and likely blocker.
+
+## Public instruction boundary
+
+Security runs `python3 scripts/check_instruction_boundary.py --repo-root .` and
+its standard-library tests. Only the regular, non-executable root `AGENTS.md`
+public map is allowed. Tracked `CLAUDE.md`, nested `AGENTS*.md`, other root
+`AGENTS*.md` files, and a symlinked root map remain forbidden. Untracked local
+instructions are outside the published Git tree. Gitleaks remains a separate
+security check; this path exception does not permit secrets.
