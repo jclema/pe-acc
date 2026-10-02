@@ -29,6 +29,7 @@ skipped.
 - `make test`: API, ETL, and frontend tests.
 - `make check`: lint, type-check, and tests.
 - `make neutrality`: banned public-safety wording scan.
+- `make check-pipeline-contracts`: validate Peru runnable states and retained legacy IDs.
 
 ## Heavy or Conditional Gates
 
@@ -44,6 +45,7 @@ skipped.
 - `make check`
 - `make neutrality`
 - `make check-public-claims`
+- `make check-pipeline-contracts`
 - `make check-source-urls`
 - `cd frontend && npm run build`
 
@@ -55,3 +57,14 @@ If network is unavailable, run the rest and report that `check-source-urls` was 
 - Fix root cause, not symptoms.
 - Re-run the smallest failing gate.
 - If a gate is flaky or externally blocked, document command, failure, and likely blocker.
+
+## Pipeline contract scope
+
+The gate reads `docs/source_registry_pe_v1.csv`. In-universe `implemented` and
+`scaffolded` entries must be runnable; `not_implemented` entries must not be.
+Scaffold availability does not imply a real dataset has been loaded.
+`config/legacy_pipeline_catalog.json` explicitly inventories inherited runnable
+IDs; it makes no coverage or load claim. Both sets must match the runner exactly.
+Adding or removing an inherited pipeline requires a reviewed catalog update.
+Missing/duplicate IDs, invalid states, empty registries and unexpected runnable
+pipelines fail. The gate also runs its standard-library CLI regression tests.
