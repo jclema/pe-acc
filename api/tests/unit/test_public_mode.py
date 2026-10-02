@@ -109,6 +109,11 @@ async def test_public_meta_endpoint(client: AsyncClient) -> None:
         new_callable=AsyncMock,
         return_value={
             "total_nodes": 10,
+            "provider_count": 13,
+            "public_entity_count": 14,
+            "procurement_process_count": 15,
+            "award_count": 16,
+            "budget_execution_count": 17,
             "total_relationships": 20,
             "company_count": 3,
             "contract_count": 4,
@@ -121,7 +126,14 @@ async def test_public_meta_endpoint(client: AsyncClient) -> None:
         response = await client.get("/api/v1/public/meta")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["product"] == "World Transparency Graph"
+    assert payload["product"] == "PE-ACC"
+    assert payload["provider_count"] == 13
+    assert payload["entity_count"] == 14
+    assert payload["process_count"] == 15
+    assert payload["award_count"] == 16
+    assert payload["company_count"] == 13
+    assert payload["contract_count"] == 16
+    assert payload["budget_execution_count"] == 17
     assert payload["mode"] == "public_safe"
 
 
@@ -226,15 +238,14 @@ async def test_public_graph_company_filters_person_nodes(client: AsyncClient) ->
 
 
 @pytest.mark.anyio
-async def test_baseline_disabled_in_public_mode(
+async def test_baseline_not_exposed_in_public_mode(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "public_mode", True)
     monkeypatch.setattr(settings, "public_allow_entity_lookup", False)
     response = await client.get("/api/v1/baseline/test-id")
-    assert response.status_code == 403
-    assert "disabled in public mode" in response.json()["detail"]
+    assert response.status_code == 404
 
 
 @pytest.mark.anyio
@@ -250,6 +261,11 @@ async def test_stats_hides_person_count_in_public_mode(
 
     fake_record = {
         "total_nodes": 100,
+        "provider_count": 40,
+        "public_entity_count": 41,
+        "procurement_process_count": 42,
+        "award_count": 43,
+        "budget_execution_count": 44,
         "total_relationships": 200,
         "person_count": 999,
         "company_count": 50,
@@ -321,7 +337,9 @@ async def test_stats_hides_person_count_in_public_mode(
     assert response.status_code == 200
     payload = response.json()
     assert payload["person_count"] == 0
-    assert payload["company_count"] == 50  # non-person counts preserved
+    assert payload["provider_count"] == 40
+    assert payload["company_count"] == 40
+    assert payload["contract_count"] == 43
 
 
 @pytest.mark.anyio
@@ -355,12 +373,43 @@ async def test_timeline_sanitizes_properties_in_public_mode(
 
 
 @pytest.mark.anyio
-async def test_investigations_disabled_in_public_mode(
+async def test_investigations_not_exposed_in_public_mode(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "public_mode", True)
     monkeypatch.setattr(settings, "public_allow_investigations", False)
     response = await client.get("/api/v1/investigations/")
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("public_mode", [False, True])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/baseline/test-id",
+        "/api/v1/emendas/",
+        "/api/v1/investigations/",
+        "/api/v1/patterns/test-id",
+    ],
+)
+async def test_retired_routes_are_not_exposed(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, public_mode: bool, path: str,
+) -> None:
+    monkeypatch.setattr(settings, "public_mode", public_mode)
+    response = await client.get(path)
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("path", ["/api/v1/baseline/test-id", "/api/v1/investigations/"])
+async def test_retained_routers_still_enforce_public_guards(
+    legacy_client: AsyncClient, monkeypatch: pytest.MonkeyPatch, path: str,
+) -> None:
+    monkeypatch.setattr(settings, "public_mode", True)
+    monkeypatch.setattr(settings, "public_allow_entity_lookup", False)
+    monkeypatch.setattr(settings, "public_allow_investigations", False)
+    response = await legacy_client.get(path)
     assert response.status_code == 403
     assert "disabled in public mode" in response.json()["detail"]
