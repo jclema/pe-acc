@@ -137,7 +137,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 path.write_bytes(response.content)
                 rows = self._read_raw_csv(path)
                 kind = self._source_kind_for_file(name)
-                if not rows.empty and not any(
+                if rows.empty or not any(
                     self._normalize_sanction_row(
                         {str(key): value for key, value in row.to_dict().items()},
                         i, source_kind=kind,
@@ -170,6 +170,8 @@ class PeOsceSanctionsPipeline(Pipeline):
                     path for path in raw_dir.iterdir()
                     if path.is_file() and path.suffix.lower() == ".csv"
                 )
+                if self.source_mode == "api" and not self._complete_fallback(self.raw_files):
+                    self.raw_files = []
                 if self.raw_files:
                     return
         snapshots = Path(self.data_dir).glob("raw/pe/osce_sanctions/api/snapshot-*")
@@ -177,10 +179,20 @@ class PeOsceSanctionsPipeline(Pipeline):
             files = [snapshot / name for name in (
                 "inhabilitaciones_judiciales.csv", "sancionados.csv",
             )]
-            if all(path.is_file() for path in files):
+            if (all(path.is_file() for path in files)
+                    and (self.source_mode != "api" or self._complete_fallback(files))):
                 self.raw_files = files
                 return
         logger.warning("[%s] no local sanction CSVs found", self.name)
+
+    def _complete_fallback(self, files: list[Path]) -> bool:
+        required = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
+        if not required.issubset({p.name for p in files}):
+            return False
+        try:
+            return all(not self._read_raw_csv(p).empty for p in files if p.name in required)
+        except (OSError, ValueError):
+            return False
 
     def transform(self) -> None:
         if self.raw_files:

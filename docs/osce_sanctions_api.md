@@ -1,26 +1,20 @@
 # Sanciones OSCE: ingesta por API
 
-Modo `api` basado en la referencia de `feat/data` (`7a98682`). Consulta la API
-de adjuntos de [OSCE/OECE PNDA](https://osce-gob-pe.atlassian.net/wiki/pages/viewpage.action?pageId=106889269)
-y descarga `sancionados.csv` e `inhabilitaciones_judiciales.csv`. Listado y descarga
-comprobados el 2026-10-01. No incorpora multas ni otras fuentes del listado.
-
-`PE_OSCE_SOURCE_MODE=file` sigue siendo el valor predeterminado; `api` activa
-la descarga. `PE_OSCE_CONFLUENCE_BASE_URL` y `PE_OSCE_CONFLUENCE_PAGE_ID` permiten
-configurar la ubicación. No necesita token. La disponibilidad depende del portal;
-la fecha de descarga no se interpreta como fecha de corte y la licencia no se infiere.
-
+API opt-in basada en `feat/data`: descarga `sancionados.csv` e
+`inhabilitaciones_judiciales.csv` desde [OSCE/OECE PNDA](https://osce-gob-pe.atlassian.net/wiki/pages/viewpage.action?pageId=106889269).
+No incluye multas. Descarga comprobada el 2026-10-01; no acredita corte ni licencia.
+`PE_OSCE_SOURCE_MODE=file` es el predeterminado. Configuración: `PE_OSCE_SOURCE_MODE=api`,
+`PE_OSCE_CONFLUENCE_BASE_URL` y `PE_OSCE_CONFLUENCE_PAGE_ID`; sin token.
 Se pagina el listado y se validan ambos CSV antes de publicar una carpeta
 `<data-dir>/raw/pe/osce_sanctions/api/snapshot-*`. Un fallo elimina la descarga
 incompleta y usa CSV locales en las rutas existentes; si no hay archivos locales,
 usa la última carpeta completa. Sin respaldo, la ejecución falla explícitamente.
+En modo API, ambos CSV deben tener filas: se rechaza un adjunto vacío y solo se
+usa un fallback con los dos CSV no vacíos. El modo file conserva su contrato.
 El fallback se registra como advertencia; no demuestra que los datos estén frescos.
 Las carpetas completas se conservan; su limpieza es una tarea manual de operación.
-
-La transformación y los IDs de sanciones son los existentes. Los enlaces usan
-la procedencia de cada fila o la página registrada. La carga hace MERGE, no borra
-sanciones ausentes de una publicación posterior. No cambia restricciones públicas.
-
+Los IDs y enlaces conservan la procedencia existente. MERGE no borra sanciones
+ausentes de publicaciones posteriores. No cambia restricciones públicas.
 Depende de #18, apilado sobre #17. Antes de cargar datos reales, completar el
 [preflight de migración](osce_migration.md), verificar el respaldo y aprobar el alcance.
 

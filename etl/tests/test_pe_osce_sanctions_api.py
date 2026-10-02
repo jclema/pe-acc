@@ -58,6 +58,7 @@ def test_api_failure_preserves_local_fallback(tmp_path, monkeypatch, failure, ca
     raw.mkdir(parents=True)
     local = raw / "sancionados.csv"
     local.write_bytes(CSV)
+    (raw / NAMES[1]).write_bytes(CSV)
 
     def handler(request):
         if failure == "timeout":
@@ -75,7 +76,7 @@ def test_api_failure_preserves_local_fallback(tmp_path, monkeypatch, failure, ca
     serve(monkeypatch, handler)
     p = pipeline(tmp_path, source_mode="api")
     p.extract()
-    assert p.raw_files == [local]
+    assert p.raw_files == sorted(raw / name for name in NAMES)
     assert local.read_bytes() == CSV
     assert not list(raw.glob("api/*"))
     assert "fallback" in caplog.text
@@ -152,3 +153,33 @@ def test_file_mode_accepts_uppercase_csv_and_ignores_directories(tmp_path, monke
     p = pipeline(tmp_path)
     p.extract()
     assert p.raw_files == [path]
+
+
+@pytest.mark.parametrize('empty_name', NAMES)
+def test_empty_attachment_keeps_previous_complete_snapshot(tmp_path, monkeypatch, empty_name):
+    empty = False
+    def handler(request):
+        if request.url.path.endswith('/attachment'):
+            return httpx.Response(200, json=listing())
+        body = (CSV.splitlines()[0] + b'\n'
+                if empty and request.url.path.endswith(empty_name) else CSV)
+        return httpx.Response(200, content=body)
+    serve(monkeypatch, handler)
+    p = pipeline(tmp_path, source_mode='api')
+    p.extract()
+    previous = p.raw_files.copy()
+    empty = True
+    p.extract()
+    assert p.raw_files == previous
+    assert len(list(previous[0].parent.parent.iterdir())) == 1
+
+
+@pytest.mark.parametrize('names', [NAMES[:1], NAMES])
+def test_api_failure_rejects_incomplete_or_empty_local_backup(tmp_path, monkeypatch, names):
+    raw = tmp_path / 'osce_sanctions'
+    raw.mkdir()
+    for name in names:
+        (raw / name).write_bytes(CSV if name == NAMES[0] else CSV.splitlines()[0] + b'\n')
+    serve(monkeypatch, lambda request: httpx.Response(503))
+    with pytest.raises(RuntimeError, match='fallback'):
+        pipeline(tmp_path, source_mode='api').extract()
