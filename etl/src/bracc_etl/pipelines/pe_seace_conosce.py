@@ -107,7 +107,10 @@ class PeSeaceConoscePipeline(Pipeline):
 
             awards.append({
                 "award_id": award_id,
-                "award_title": normalize_name(str(row.get("award_title", ""))) or normalize_name(str(row.get("title", ""))),
+                "award_title": (
+                    normalize_name(str(row.get("award_title", "")))
+                    or normalize_name(str(row.get("title", "")))
+                ),
                 "award_date": parse_date(str(row.get("award_date", ""))),
                 "amount": float(str(row.get("amount", "0")).replace(",", "") or 0),
                 "provider_ruc": provider_ruc,
