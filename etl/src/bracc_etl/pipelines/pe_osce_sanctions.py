@@ -178,16 +178,10 @@ class PeOsceSanctionsPipeline(Pipeline):
         downloaded_at = None
         age = None
         if self.raw_files:
-            try:
-                metadata = json.loads(
-                    (self.raw_files[0].parent / "manifest.json").read_text(encoding="utf-8"),
-                )
-                timestamp = datetime.fromisoformat(metadata["downloaded_at"])
-                if timestamp.tzinfo is not None and timestamp <= datetime.now(UTC):
-                    downloaded_at = timestamp.isoformat()
-                    age = int((datetime.now(UTC) - timestamp).total_seconds())
-            except (OSError, ValueError, KeyError, TypeError):
-                pass
+            timestamp = self._snapshot_timestamp(self.raw_files[0].parent)
+            if timestamp is not None:
+                downloaded_at = timestamp.isoformat()
+                age = int((datetime.now(UTC) - timestamp).total_seconds())
         self.extraction_status = {
             "mode": mode, "downloaded_at": downloaded_at, "age_seconds": age,
         }
@@ -196,29 +190,41 @@ class PeOsceSanctionsPipeline(Pipeline):
 
     def _prune_snapshots(self, root: Path, current: Path) -> None:
         managed = []
-        names = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
         for path in root.glob("snapshot-*"):
-            if not path.is_dir() or path.is_symlink():
-                continue
-            try:
-                children = list(path.iterdir())
-                if {p.name for p in children} != names | {"manifest.json"}:
-                    continue
-                if any(p.is_symlink() or not p.is_file() for p in children):
-                    continue
-                meta = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
-                if set(meta["files"]) != names or not meta.get("downloaded_at"):
-                    continue
-                if any(hashlib.sha256((path / name).read_bytes()).hexdigest()
-                       != meta["files"][name]["sha256"] for name in names):
-                    continue
+            if self._snapshot_timestamp(path) is not None:
                 managed.append(path)
-            except (OSError, ValueError, KeyError, TypeError):
-                continue
         older = sorted((p for p in managed if p != current),
                        key=lambda p: p.stat().st_mtime, reverse=True)
         for path in older[self.snapshot_keep - 1:]:
             shutil.rmtree(path)
+
+    @staticmethod
+    def _snapshot_timestamp(path: Path) -> datetime | None:
+        """Trust freshness/retention only for complete, unaltered managed snapshots."""
+        names = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
+        try:
+            if path.is_symlink() or not path.is_dir():
+                return None
+            children = list(path.iterdir())
+            if {p.name for p in children} != names | {"manifest.json"}:
+                return None
+            if any(p.is_symlink() or not p.is_file() for p in children):
+                return None
+            meta = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
+            timestamp = datetime.fromisoformat(meta["downloaded_at"])
+            if timestamp.tzinfo is None or timestamp > datetime.now(UTC):
+                return None
+            if set(meta["files"]) != names:
+                return None
+            for name in names:
+                content = (path / name).read_bytes()
+                info = meta["files"][name]
+                if (info["bytes"] != len(content)
+                        or info["sha256"] != hashlib.sha256(content).hexdigest()):
+                    return None
+            return timestamp
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
 
     @staticmethod
     def _api_url(base: str, link: object) -> str:
@@ -248,6 +254,13 @@ class PeOsceSanctionsPipeline(Pipeline):
             files = [snapshot / name for name in (
                 "inhabilitaciones_judiciales.csv", "sancionados.csv",
             )]
+            if snapshot.is_symlink() or any(path.is_symlink() for path in files):
+                continue
+            manifest = snapshot / "manifest.json"
+            if (manifest.exists() or manifest.is_symlink()) and self._snapshot_timestamp(
+                snapshot,
+            ) is None:
+                continue
             if all(path.is_file() for path in files):
                 self.raw_files = files
                 return

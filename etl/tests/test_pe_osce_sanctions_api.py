@@ -174,13 +174,18 @@ def test_download_records_verifiable_freshness(tmp_path, monkeypatch):
 
 
 def test_fallback_reports_known_age_without_claiming_source_cutoff(tmp_path, monkeypatch, caplog):
+    import hashlib
     import json
 
     raw = tmp_path / 'raw/pe/osce_sanctions/api/snapshot-old'
     raw.mkdir(parents=True)
     for name in NAMES:
         (raw / name).write_bytes(CSV)
-    (raw / 'manifest.json').write_text(json.dumps({'downloaded_at': '2020-01-01T00:00:00+00:00'}))
+    (raw / 'manifest.json').write_text(json.dumps({
+        'downloaded_at': '2020-01-01T00:00:00+00:00',
+        'files': {name: {'bytes': len(CSV), 'sha256': hashlib.sha256(CSV).hexdigest()}
+                  for name in NAMES},
+    }))
     serve(monkeypatch, lambda request: httpx.Response(503))
     p = pipeline(tmp_path, source_mode='api')
     p.extract()
@@ -284,3 +289,54 @@ def test_retention_preserves_tampered_and_symlinked_snapshots(tmp_path, monkeypa
     assert (older / 'sancionados.csv').read_bytes() == b'altered'
     assert alias.is_symlink()
     assert p.raw_files[0].parent != older
+
+
+@pytest.mark.parametrize('damage', ['csv', 'size', 'date', 'shape', 'symlink'])
+def test_fallback_skips_invalid_managed_snapshot(tmp_path, monkeypatch, damage):
+    import json
+    import shutil
+
+    serve(monkeypatch, lambda request: (
+        httpx.Response(200, json=listing()) if request.url.path.endswith('/attachment')
+        else httpx.Response(200, content=CSV)
+    ))
+    p = pipeline(tmp_path, source_mode='api')
+    p.extract()
+    valid = p.raw_files.copy()
+    bad = valid[0].parent.with_name('snapshot-damaged')
+    shutil.copytree(valid[0].parent, bad)
+    manifest = bad / 'manifest.json'
+    meta = json.loads(manifest.read_text())
+    if damage == 'csv':
+        (bad / NAMES[0]).write_bytes(CSV + b'20654321987,OTHER\n')
+    elif damage == 'size':
+        meta['files'][NAMES[0]]['bytes'] = 0
+    elif damage == 'date':
+        meta['downloaded_at'] = 'bad'
+    elif damage == 'shape':
+        meta = []
+    else:
+        (bad / NAMES[0]).unlink()
+        (bad / NAMES[0]).symlink_to(valid[0].parent / NAMES[0])
+    manifest.write_text(json.dumps(meta))
+    p.raw_files = [bad / name for name in NAMES]
+    p._report_extraction('fallback')
+    assert p.extraction_status['downloaded_at'] is None
+    monkeypatch.undo()
+    serve(monkeypatch, lambda request: httpx.Response(503))
+    p.extract()
+    assert p.raw_files == valid
+    p.snapshot_keep = 1
+    p._prune_snapshots(bad.parent, valid[0].parent)
+    assert bad.exists()  # Invalid files require manual inspection, never deletion.
+
+
+def test_legacy_snapshot_without_manifest_remains_available(tmp_path, monkeypatch):
+    raw = tmp_path / 'raw/pe/osce_sanctions/api/snapshot-legacy'
+    raw.mkdir(parents=True)
+    for name in NAMES:
+        (raw / name).write_bytes(CSV)
+    serve(monkeypatch, lambda request: httpx.Response(503))
+    p = pipeline(tmp_path, source_mode='api')
+    p.extract()
+    assert len(p.raw_files) == 2 and p.extraction_status['downloaded_at'] is None

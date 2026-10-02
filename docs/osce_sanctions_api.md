@@ -13,7 +13,10 @@ la fecha de descarga no se interpreta como fecha de corte y la licencia no se in
 Se pagina el listado y se validan ambos CSV antes de publicar una carpeta
 `<data-dir>/raw/pe/osce_sanctions/api/snapshot-*`. Un fallo elimina la descarga
 incompleta y usa CSV locales en las rutas existentes; si no hay archivos locales,
-usa la última carpeta completa. Sin respaldo, la ejecución falla explícitamente.
+usa la última carpeta completa. Los snapshots con manifiesto inválido, hashes o
+tamaños distintos y enlaces simbólicos se omiten y conservan para inspección manual.
+Los snapshots legacy sin manifiesto mantienen antigüedad desconocida.
+Sin respaldo, la ejecución falla explícitamente.
 El fallback se registra como advertencia; no demuestra que los datos estén frescos.
 Cada snapshot nuevo incluye `manifest.json`: fecha UTC de descarga, página oficial,
 URLs, tamaños y SHA-256. La descarga no acredita la fecha de corte de la fuente.
@@ -34,18 +37,26 @@ Depende de #18, apilado sobre #17. Antes de cargar datos reales, completar el
 
 ## Pruebas y ejecución
 
-Desde `etl/`, con Docker disponible para la integración aislada:
+Comandos copy/paste desde la raíz del checkout; requieren `uv` y Docker para las
+integraciones. TMPDIR y pytest quedan en cache para evitar llenar el tmpfs:
 ```bash
-export UV_PROJECT_ENVIRONMENT="$(mktemp -d)/venv"
+export UV_PROJECT_ENVIRONMENT="$HOME/.cache/peacc-pr6/etl-env"
+export TMPDIR="$HOME/.cache/peacc-osce-operations/tmp"
+mkdir -p "$TMPDIR"
+cd etl
 uv sync --frozen --extra dev
-uv run pytest tests/test_pe_osce_sanctions_api.py tests/test_pe_osce_sanctions_pipeline.py
-uv run pytest -o addopts='' -m integration tests/integration/test_pe_osce_sanctions_integration.py
-PE_OSCE_SOURCE_MODE=api uv run bracc-etl run --source pe_osce_sanctions --data-dir /ruta/datos --neo4j-uri "$OSCE_TEST_URI" --neo4j-password "$OSCE_TEST_PASSWORD"
+uv run --frozen pytest tests/test_pe_osce_sanctions_api.py tests/test_pe_osce_sanctions_pipeline.py
+uv run --frozen pytest -o addopts='' -m integration --basetemp="$TMPDIR/osce-synthetic" \
+  tests/integration/test_pe_osce_sanctions_integration.py -k 'not official_api'
+uv run --frozen pytest
+uv run --frozen ruff check src tests
+uv run --frozen mypy src
+cd ..
+make neutrality check-public-claims check-source-urls
+gh pr checks 19 --repo jclema/pe-acc
 ```
-La integración usa Neo4j temporal y respuestas HTTP sintéticas, sin red externa.
-Usar primero una base aislada; una ejecución del runner escribe en su destino.
-Para una carga en la base existente, acordar el alcance y respaldarla antes.
-Después, la UI Docker consulta los datos locales como siempre.
+Las pruebas usan Neo4j temporal y respuestas HTTP sintéticas; no escriben en bases
+existentes. La ejecución real del runner requiere destino aprobado y respaldo.
 
 Rollback: volver a `PE_OSCE_SOURCE_MODE=file` o revertir el código. Esto no revierte
 datos ya cargados; para ello restaurar el respaldo. La programación debe activarse
@@ -80,7 +91,8 @@ El operador debe decidir el umbral de antigüedad aceptable; no hay alertas auto
 
 Prueba reproducible con API oficial y Neo4j temporal (Docker; no toca otras bases):
 ```bash
-PE_OSCE_LIVE_TEST=1 uv run --frozen pytest -o addopts='' -s \
+cd etl  # desde la raíz; reutilizar las variables del bloque anterior
+PE_OSCE_LIVE_TEST=1 uv run --frozen pytest -o addopts='' -s --basetemp="$TMPDIR/osce-live" \
   tests/integration/test_pe_osce_sanctions_integration.py::test_official_api_real_data_load_is_idempotent
 ```
 Exige descarga efectiva, carga dos veces, verifica conteos y RUC de cada relación;
