@@ -149,7 +149,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 path.write_bytes(response.content)
                 rows = self._read_raw_csv(path)
                 kind = self._source_kind_for_file(name)
-                if not rows.empty and not any(
+                if rows.empty or not any(
                     self._normalize_sanction_row(
                         {str(key): value for key, value in row.to_dict().items()},
                         i, source_kind=kind,
@@ -194,9 +194,14 @@ class PeOsceSanctionsPipeline(Pipeline):
             if self._snapshot_timestamp(path) is not None:
                 managed.append(path)
         older = sorted((p for p in managed if p != current),
-                       key=lambda p: p.stat().st_mtime, reverse=True)
+                       key=self._snapshot_sort_key, reverse=True)
         for path in older[self.snapshot_keep - 1:]:
             shutil.rmtree(path)
+
+    def _snapshot_sort_key(self, path: Path) -> tuple[bool, float]:
+        timestamp = self._snapshot_timestamp(path)
+        return (timestamp is not None,
+                timestamp.timestamp() if timestamp is not None else path.stat().st_mtime)
 
     @staticmethod
     def _snapshot_timestamp(path: Path) -> datetime | None:
@@ -222,7 +227,7 @@ class PeOsceSanctionsPipeline(Pipeline):
                 if (info["bytes"] != len(content)
                         or info["sha256"] != hashlib.sha256(content).hexdigest()):
                     return None
-            return timestamp
+            return timestamp.astimezone(UTC)
         except (OSError, ValueError, KeyError, TypeError):
             return None
 
@@ -247,11 +252,13 @@ class PeOsceSanctionsPipeline(Pipeline):
                     path for path in raw_dir.iterdir()
                     if path.is_file() and path.suffix.lower() == ".csv"
                 )
+                if self.source_mode == "api" and not self._complete_fallback(self.raw_files):
+                    self.raw_files = []
                 if self.raw_files:
                     return
         snapshots = Path(self.data_dir).glob("raw/pe/osce_sanctions/api/snapshot-*")
         snapshots = (path for path in snapshots if not path.is_symlink())
-        for snapshot in sorted(snapshots, key=lambda path: path.stat().st_mtime, reverse=True):
+        for snapshot in sorted(snapshots, key=self._snapshot_sort_key, reverse=True):
             files = [snapshot / name for name in (
                 "inhabilitaciones_judiciales.csv", "sancionados.csv",
             )]
@@ -262,10 +269,20 @@ class PeOsceSanctionsPipeline(Pipeline):
                 snapshot,
             ) is None:
                 continue
-            if all(path.is_file() for path in files):
+            if (all(path.is_file() for path in files)
+                    and (self.source_mode != "api" or self._complete_fallback(files))):
                 self.raw_files = files
                 return
         logger.warning("[%s] no local sanction CSVs found", self.name)
+
+    def _complete_fallback(self, files: list[Path]) -> bool:
+        required = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
+        if not required.issubset({p.name for p in files}):
+            return False
+        try:
+            return all(not self._read_raw_csv(p).empty for p in files if p.name in required)
+        except (OSError, ValueError):
+            return False
 
     def transform(self) -> None:
         if self.raw_files:

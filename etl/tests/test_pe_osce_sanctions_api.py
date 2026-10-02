@@ -58,6 +58,7 @@ def test_api_failure_preserves_local_fallback(tmp_path, monkeypatch, failure, ca
     raw.mkdir(parents=True)
     local = raw / "sancionados.csv"
     local.write_bytes(CSV)
+    (raw / NAMES[1]).write_bytes(CSV)
 
     def handler(request):
         if failure == "timeout":
@@ -75,7 +76,7 @@ def test_api_failure_preserves_local_fallback(tmp_path, monkeypatch, failure, ca
     serve(monkeypatch, handler)
     p = pipeline(tmp_path, source_mode="api")
     p.extract()
-    assert p.raw_files == [local]
+    assert p.raw_files == sorted(raw / name for name in NAMES)
     assert local.read_bytes() == CSV
     assert not list(raw.glob("api/*"))
     assert "fallback" in caplog.text
@@ -198,7 +199,8 @@ def test_fallback_reports_known_age_without_claiming_source_cutoff(tmp_path, mon
 def test_local_fallback_without_manifest_has_unknown_download_date(tmp_path, monkeypatch):
     raw = tmp_path / 'osce_sanctions'
     raw.mkdir()
-    (raw / 'sancionados.csv').write_bytes(CSV)
+    for name in NAMES:
+        (raw / name).write_bytes(CSV)
     serve(monkeypatch, lambda request: httpx.Response(503))
     p = pipeline(tmp_path, source_mode='api')
     p.extract()
@@ -341,3 +343,60 @@ def test_legacy_snapshot_without_manifest_remains_available(tmp_path, monkeypatc
     p = pipeline(tmp_path, source_mode='api')
     p.extract()
     assert len(p.raw_files) == 2 and p.extraction_status['downloaded_at'] is None
+
+
+@pytest.mark.parametrize('empty_name', NAMES)
+def test_empty_attachment_keeps_previous_complete_snapshot(tmp_path, monkeypatch, empty_name):
+    empty = False
+    def handler(request):
+        if request.url.path.endswith('/attachment'):
+            return httpx.Response(200, json=listing())
+        body = (CSV.splitlines()[0] + b'\n'
+                if empty and request.url.path.endswith(empty_name) else CSV)
+        return httpx.Response(200, content=body)
+    serve(monkeypatch, handler)
+    p = pipeline(tmp_path, source_mode='api')
+    p.extract()
+    previous = p.raw_files.copy()
+    empty = True
+    p.extract()
+    assert p.raw_files == previous
+    assert len(list(previous[0].parent.parent.iterdir())) == 1
+
+
+@pytest.mark.parametrize('names', [NAMES[:1], NAMES])
+def test_api_failure_rejects_incomplete_or_empty_local_backup(tmp_path, monkeypatch, names):
+    raw = tmp_path / 'osce_sanctions'
+    raw.mkdir()
+    for name in names:
+        (raw / name).write_bytes(CSV if name == NAMES[0] else CSV.splitlines()[0] + b'\n')
+    serve(monkeypatch, lambda request: httpx.Response(503))
+    with pytest.raises(RuntimeError, match='fallback'):
+        pipeline(tmp_path, source_mode='api').extract()
+
+
+def test_fallback_and_retention_use_manifest_date_instead_of_mtime(tmp_path, monkeypatch):
+    import json
+    import os
+
+    monkeypatch.setenv('PE_OSCE_SNAPSHOT_KEEP', '3')
+    serve(monkeypatch, lambda request: (
+        httpx.Response(200, json=listing()) if request.url.path.endswith('/attachment')
+        else httpx.Response(200, content=CSV)
+    ))
+    p = pipeline(tmp_path, source_mode='api')
+    paths = []
+    for year, mtime in [(2020, 300), (2022, 100), (2021, 200)]:
+        p.extract()
+        path = p.raw_files[0].parent
+        manifest = path / 'manifest.json'
+        meta = json.loads(manifest.read_text())
+        meta['downloaded_at'] = f'{year}-01-01T00:00:00+00:00'
+        manifest.write_text(json.dumps(meta))
+        os.utime(path, (mtime, mtime))
+        paths.append(path)
+    p._extract_from_local_files()
+    assert p.raw_files[0].parent == paths[1]
+    p.snapshot_keep = 2
+    p.extract()
+    assert paths[1].exists() and not paths[0].exists() and not paths[2].exists()
