@@ -49,6 +49,19 @@ skipped.
 
 If network is unavailable, run the rest and report that `check-source-urls` was skipped.
 
+## Pull request CI
+
+CI, Security and Docker builds run on pull requests targeting any branch,
+including stacked drafts. Python quality/export steps use frozen lockfiles;
+failed dependency installation stops the suite before stale tools can run.
+Frontend quality includes its production build. Repository Contracts runs the
+standard-library gate tests, Peru pipeline contract and public-claims checker.
+Python dependency audits run independently for API and ETL with fail-fast off.
+Public Boundary is evaluated for PE-ACC as well as the upstream repository.
+Docker PR jobs have read-only repository permissions and never publish images;
+main/tag pushes retain the existing publication job. Integration tests remain
+opt-in through `ENABLE_INTEGRATION_TESTS=true`, now also for PRs.
+
 ## Failure Handling
 
 - Read the first actionable error, not the whole log.
