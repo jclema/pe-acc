@@ -2,7 +2,7 @@
 
 Status: preparation only. No user or production database has been migrated.
 PR #17 (quality/dependencies) must be integrated before release; this change is
-based on main `98a06b9`. PR #6 remains frozen. No schema or public API changes.
+stacked on `fix/restore-green-ci` (#17). PR #6 must not load real data before approval.
 
 ## Inventory and read-only preflight
 

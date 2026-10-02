@@ -64,8 +64,12 @@ async def public_meta(
         "entity_count": record["public_entity_count"] if record else 0,
         "process_count": record["procurement_process_count"] if record else 0,
         "award_count": record["award_count"] if record else 0,
-        "company_count": (record["provider_count"] if record and record["provider_count"] is not None else 0),
-        "contract_count": (record["award_count"] if record and record["award_count"] is not None else 0),
+        "company_count": (
+            record["provider_count"] if record and record["provider_count"] is not None else 0
+        ),
+        "contract_count": (
+            record["award_count"] if record and record["award_count"] is not None else 0
+        ),
         "sanction_count": record["sanction_count"] if record else 0,
         "budget_execution_count": record["budget_execution_count"] if record else 0,
         "source_health": {

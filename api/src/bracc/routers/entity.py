@@ -105,7 +105,9 @@ async def get_entity(
     enforce_entity_lookup_policy(cpf_or_cnpj)
     identifier = _clean_identifier(cpf_or_cnpj)
 
-    if not CPF_PATTERN.match(identifier) and not CNPJ_PATTERN.match(identifier) and not RUC_PATTERN.match(identifier):
+    if not any(
+        pattern.match(identifier) for pattern in (CPF_PATTERN, CNPJ_PATTERN, RUC_PATTERN)
+    ):
         raise HTTPException(status_code=400, detail="Invalid CPF, CNPJ, or RUC format")
 
     if CPF_PATTERN.match(identifier):

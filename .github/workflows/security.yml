@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   gitleaks:
@@ -46,8 +45,15 @@ jobs:
             -lll -iii
 
   pip-audit:
-    name: Pip Audit (Python deps)
+    name: Pip Audit (${{ matrix.component }} deps)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, etl]
+    defaults:
+      run:
+        working-directory: ${{ matrix.component }}
     steps:
       - uses: actions/checkout@v4
 
@@ -59,18 +65,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Export lock-compatible requirement sets
-        run: |
-          cd api
-          uv export --format requirements-txt --no-hashes --no-emit-project --no-emit-local > /tmp/api-requirements.txt
-          cd ../etl
-          uv export --format requirements-txt --no-hashes --no-emit-project --no-emit-local > /tmp/etl-requirements.txt
+      - name: Export frozen requirements
+        run: uv export --frozen --format requirements-txt --no-hashes --no-emit-project --no-emit-local > /tmp/audit-requirements.txt
 
-      - name: Audit API dependencies
-        run: uvx pip-audit -r /tmp/api-requirements.txt --strict
-
-      - name: Audit ETL dependencies
-        run: uvx pip-audit -r /tmp/etl-requirements.txt --strict
+      - name: Audit dependencies
+        run: uvx pip-audit -r /tmp/audit-requirements.txt --strict
 
   npm-audit:
     name: NPM Audit (frontend)
@@ -80,7 +79,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -118,7 +117,6 @@ jobs:
 
   public-boundary-gate:
     name: Public Boundary Gate
-    if: github.repository == 'brunoclz/br-acc'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -136,9 +134,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure internal assistant files are not tracked
-        run: |
-          if git ls-files | grep -E '(^|/)(CLAUDE\.md|AGENTS.*\.md)$'; then
-            echo "Forbidden tracked files found: CLAUDE.md / AGENTS*.md"
-            exit 1
-          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test instruction boundary
+        run: python -m unittest discover -s scripts/tests -p test_instruction_boundary.py
+
+      - name: Validate tracked instruction boundary
+        run: python scripts/check_instruction_boundary.py --repo-root .

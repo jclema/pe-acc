@@ -134,7 +134,7 @@ check: lint type-check test
 agent-check-fast: test-api test-etl test-frontend neutrality
 	@echo "Fast agent checks passed."
 
-agent-check-full: check neutrality check-public-claims check-source-urls
+agent-check-full: check neutrality check-public-claims check-source-urls check-pipeline-contracts
 	cd frontend && npm run build
 	@echo "Full agent checks passed."
 
@@ -183,6 +183,7 @@ check-source-urls:
 	python3 scripts/check_source_urls.py --registry-path docs/source_registry_pe_v1.csv --exceptions-path config/source_url_exceptions.yml --output audit-results/public-trust/latest/source-url-audit.json
 
 check-pipeline-contracts:
+	python3 -m unittest discover -s scripts/tests -p test_pipeline_contracts.py
 	python3 scripts/check_pipeline_contracts.py
 
 check-pipeline-inputs:

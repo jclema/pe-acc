@@ -29,6 +29,16 @@ skipped.
 - `make test`: API, ETL, and frontend tests.
 - `make check`: lint, type-check, and tests.
 - `make neutrality`: banned public-safety wording scan.
+- `make check-pipeline-contracts`: validate Peru runnable states and retained legacy IDs.
+
+## Public instruction boundary
+
+Security runs `python3 scripts/check_instruction_boundary.py --repo-root .` and
+its standard-library tests. Only the regular, non-executable root `AGENTS.md`
+public map is allowed. Tracked `CLAUDE.md`, nested `AGENTS*.md`, other root
+`AGENTS*.md` files, and a symlinked root map remain forbidden. Untracked local
+instructions are outside the published Git tree. Gitleaks remains a separate
+security check; this path exception does not permit secrets.
 
 ## Heavy or Conditional Gates
 
@@ -44,10 +54,24 @@ skipped.
 - `make check`
 - `make neutrality`
 - `make check-public-claims`
+- `make check-pipeline-contracts`
 - `make check-source-urls`
 - `cd frontend && npm run build`
 
 If network is unavailable, run the rest and report that `check-source-urls` was skipped.
+
+## Pull request CI
+
+CI, Security and Docker builds run on pull requests targeting any branch,
+including stacked drafts. Python quality/export steps use frozen lockfiles;
+failed dependency installation stops the suite before stale tools can run.
+Frontend quality includes its production build. Repository Contracts runs the
+standard-library gate tests, Peru pipeline contract and public-claims checker.
+Python dependency audits run independently for API and ETL with fail-fast off.
+Public Boundary is evaluated for PE-ACC as well as the upstream repository.
+Docker PR jobs have read-only repository permissions and never publish images;
+main/tag pushes retain the existing publication job. Integration tests remain
+opt-in through `ENABLE_INTEGRATION_TESTS=true`, now also for PRs.
 
 ## Failure Handling
 
@@ -55,3 +79,14 @@ If network is unavailable, run the rest and report that `check-source-urls` was 
 - Fix root cause, not symptoms.
 - Re-run the smallest failing gate.
 - If a gate is flaky or externally blocked, document command, failure, and likely blocker.
+
+## Pipeline contract scope
+
+The gate reads `docs/source_registry_pe_v1.csv`. In-universe `implemented` and
+`scaffolded` entries must be runnable; `not_implemented` entries must not be.
+Scaffold availability does not imply a real dataset has been loaded.
+`config/legacy_pipeline_catalog.json` explicitly inventories inherited runnable
+IDs; it makes no coverage or load claim. Both sets must match the runner exactly.
+Adding or removing an inherited pipeline requires a reviewed catalog update.
+Missing/duplicate IDs, invalid states, empty registries and unexpected runnable
+pipelines fail. The gate also runs its standard-library CLI regression tests.

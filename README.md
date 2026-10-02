@@ -373,6 +373,21 @@ Si vas a portar ideas desde el upstream:
 
 Este proyecto parte del trabajo original de [`br-acc`](https://github.com/enioxt/br-acc) y lo adapta al contexto peruano.
 
+## Legal & Ethics
+
+Políticas heredadas y límites de uso público:
+
+- [Ética](ETHICS.md)
+- [Referencia LGPD](LGPD.md)
+- [Privacidad](PRIVACY.md)
+- [Términos](TERMS.md)
+- [Limitaciones](DISCLAIMER.md)
+- [Seguridad](SECURITY.md)
+- [Respuesta a abuso](ABUSE_RESPONSE.md)
+
+El [índice legal](docs/legal/legal-index.md) describe su aplicabilidad. Estos
+enlaces no afirman una validación legal específica para Perú.
+
 ## Licencia
 
 [GNU Affero General Public License v3.0](LICENSE)
