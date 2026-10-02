@@ -182,11 +182,13 @@ def test_entity_timeline_query_traverses_same_as() -> None:
     assert "type(r) <> 'SAME_AS'" in cypher
 
 
-def test_graph_expand_query_includes_same_as() -> None:
-    """Verify graph_expand.cypher traverses SAME_AS relationships."""
+def test_graph_expand_query_traverses_all_relationship_types() -> None:
+    """Generic traversal includes SAME_AS and Peru relationships without a type filter."""
     CypherLoader.clear_cache()
     cypher = CypherLoader.load("graph_expand")
-    assert "SAME_AS" in cypher
+    assert "(center)-[*1..4]-(n)" in cypher
+    assert "length(p) <= $depth" in cypher
+    assert "x:User OR x:Investigation OR x:Annotation OR x:Tag" in cypher
 
 
 def test_entity_connections_query_includes_same_as() -> None:
