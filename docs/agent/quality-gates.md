@@ -68,3 +68,12 @@ IDs; it makes no coverage or load claim. Both sets must match the runner exactly
 Adding or removing an inherited pipeline requires a reviewed catalog update.
 Missing/duplicate IDs, invalid states, empty registries and unexpected runnable
 pipelines fail. The gate also runs its standard-library CLI regression tests.
+
+## Public instruction boundary
+
+Security runs `python3 scripts/check_instruction_boundary.py --repo-root .` and
+its standard-library tests. Only the regular, non-executable root `AGENTS.md`
+public map is allowed. Tracked `CLAUDE.md`, nested `AGENTS*.md`, other root
+`AGENTS*.md` files, and a symlinked root map remain forbidden. Untracked local
+instructions are outside the published Git tree. Gitleaks remains a separate
+security check; this path exception does not permit secrets.
