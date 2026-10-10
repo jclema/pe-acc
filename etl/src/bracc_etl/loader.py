@@ -4,8 +4,10 @@ import re
 import time
 from typing import Any
 
-from neo4j import Driver
+from neo4j import Driver, ManagedTransaction
 from neo4j.exceptions import TransientError
+
+from bracc_etl.provider_provenance import merge_provider_record
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +103,30 @@ class Neo4jBatchLoader:
             f"{set_clause}"
         )
         return self._run_batches(query, rows)
+
+    def load_provider_records(self, rows: list[dict[str, Any]], source: str) -> int:
+        """Merge evidence under per-Provider write locks, retrying whole transactions."""
+        def write(tx: ManagedTransaction, batch: list[dict[str, Any]]) -> None:
+            locked = tx.run(
+                "UNWIND $rows AS row WITH row ORDER BY row.ruc "
+                "MERGE (n:Provider {ruc:row.ruc}) SET n.ruc = n.ruc "
+                "RETURN n.ruc AS ruc, properties(n) AS props", rows=batch,
+            ).data()
+            current = {entry["ruc"]: entry["props"] for entry in locked}
+            updates = []
+            for row in batch:
+                props = merge_provider_record(current.get(row["ruc"], {}), row, source)
+                current.setdefault(row["ruc"], {}).update(props)
+                updates.append(props)
+            tx.run("UNWIND $rows AS row MATCH (n:Provider {ruc:row.ruc}) SET n += row",
+                   rows=updates).consume()
+
+        valid = [row for row in rows if row.get("ruc")]
+        for start in range(0, len(valid), self.batch_size):
+            with self.driver.session(database=self.neo4j_database) as session:
+                session.execute_write(write, valid[start:start + self.batch_size])
+        self._total_written += len(valid)
+        return len(valid)
 
     def load_relationships(
         self,
