@@ -6,7 +6,9 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -71,19 +73,29 @@ class PeOsceSanctionsPipeline(Pipeline):
         self.provider_sanctions: list[dict[str, Any]] = []
         self.raw_files: list[Path] = []
         self.normalized_csv_path: Path | None = None
+        self.extraction_status: dict[str, Any] = {}
+        try:
+            self.snapshot_keep = int(os.getenv("PE_OSCE_SNAPSHOT_KEEP", "3"))
+            if self.snapshot_keep < 1:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError("PE_OSCE_SNAPSHOT_KEEP must be a positive integer") from exc
         self.source_mode = source_mode or os.getenv("PE_OSCE_SOURCE_MODE", "file")
         if self.source_mode not in {"file", "api"}:
             raise ValueError("source_mode must be file or api")
 
     def extract(self) -> None:
         self.raw_files = []
+        self.extraction_status = {}
         if self.source_mode == "api":
             try:
                 self._extract_via_api()
+                self._report_extraction("api")
                 return
             except (httpx.HTTPError, ValueError, OSError) as exc:
                 logger.warning("[%s] API failed; using local file fallback (%s)", self.name, exc)
         self._extract_from_local_files()
+        self._report_extraction("fallback" if self.source_mode == "api" else "file")
         if self.source_mode == "api" and not self.raw_files:
             raise RuntimeError("OSCE API failed and no local fallback CSVs are available")
 
@@ -145,9 +157,79 @@ class PeOsceSanctionsPipeline(Pipeline):
                     for i, row in rows.iterrows()
                 ):
                     raise ValueError("OSCE download has no valid sanctions")
+            manifest = {
+                "downloaded_at": datetime.now(UTC).isoformat(),
+                "source_page": f"{base}/pages/viewpage.action?pageId={page}",
+                "files": {name: {
+                    "url": downloads[name], "bytes": (staging / name).stat().st_size,
+                    "sha256": hashlib.sha256((staging / name).read_bytes()).hexdigest(),
+                } for name in sorted(wanted)},
+            }
+            (staging / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
             snapshot = staging.with_name(staging.name.replace("pending-", "snapshot-", 1))
             staging.rename(snapshot)
             self.raw_files = sorted(snapshot / name for name in wanted)
+            try:
+                self._prune_snapshots(root, snapshot)
+            except OSError as exc:
+                logger.warning("[%s] snapshot retention failed: %s", self.name, exc)
+
+    def _report_extraction(self, mode: str) -> None:
+        downloaded_at = None
+        age = None
+        if self.raw_files:
+            timestamp = self._snapshot_timestamp(self.raw_files[0].parent)
+            if timestamp is not None:
+                downloaded_at = timestamp.isoformat()
+                age = int((datetime.now(UTC) - timestamp).total_seconds())
+        self.extraction_status = {
+            "mode": mode, "downloaded_at": downloaded_at, "age_seconds": age,
+        }
+        log = logger.warning if mode == "fallback" else logger.info
+        log("[%s] extraction %s; source cutoff is separate", self.name, self.extraction_status)
+
+    def _prune_snapshots(self, root: Path, current: Path) -> None:
+        managed = []
+        for path in root.glob("snapshot-*"):
+            if self._snapshot_timestamp(path) is not None:
+                managed.append(path)
+        older = sorted((p for p in managed if p != current),
+                       key=self._snapshot_sort_key, reverse=True)
+        for path in older[self.snapshot_keep - 1:]:
+            shutil.rmtree(path)
+
+    def _snapshot_sort_key(self, path: Path) -> tuple[bool, float]:
+        timestamp = self._snapshot_timestamp(path)
+        return (timestamp is not None,
+                timestamp.timestamp() if timestamp is not None else path.stat().st_mtime)
+
+    @staticmethod
+    def _snapshot_timestamp(path: Path) -> datetime | None:
+        """Trust freshness/retention only for complete, unaltered managed snapshots."""
+        names = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
+        try:
+            if path.is_symlink() or not path.is_dir():
+                return None
+            children = list(path.iterdir())
+            if {p.name for p in children} != names | {"manifest.json"}:
+                return None
+            if any(p.is_symlink() or not p.is_file() for p in children):
+                return None
+            meta = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
+            timestamp = datetime.fromisoformat(meta["downloaded_at"])
+            if timestamp.tzinfo is None or timestamp > datetime.now(UTC):
+                return None
+            if set(meta["files"]) != names:
+                return None
+            for name in names:
+                content = (path / name).read_bytes()
+                info = meta["files"][name]
+                if (info["bytes"] != len(content)
+                        or info["sha256"] != hashlib.sha256(content).hexdigest()):
+                    return None
+            return timestamp.astimezone(UTC)
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
 
     @staticmethod
     def _api_url(base: str, link: object) -> str:
@@ -175,10 +257,18 @@ class PeOsceSanctionsPipeline(Pipeline):
                 if self.raw_files:
                     return
         snapshots = Path(self.data_dir).glob("raw/pe/osce_sanctions/api/snapshot-*")
-        for snapshot in sorted(snapshots, key=lambda path: path.stat().st_mtime, reverse=True):
+        snapshots = (path for path in snapshots if not path.is_symlink())
+        for snapshot in sorted(snapshots, key=self._snapshot_sort_key, reverse=True):
             files = [snapshot / name for name in (
                 "inhabilitaciones_judiciales.csv", "sancionados.csv",
             )]
+            if snapshot.is_symlink() or any(path.is_symlink() for path in files):
+                continue
+            manifest = snapshot / "manifest.json"
+            if (manifest.exists() or manifest.is_symlink()) and self._snapshot_timestamp(
+                snapshot,
+            ) is None:
+                continue
             if (all(path.is_file() for path in files)
                     and (self.source_mode != "api" or self._complete_fallback(files))):
                 self.raw_files = files

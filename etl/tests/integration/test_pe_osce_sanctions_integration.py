@@ -83,3 +83,39 @@ def test_api_download_repeated_load_is_idempotent(neo4j_driver, tmp_path, monkey
         assert len(rows) == 2
         assert {row["source"] for row in rows} == {"OSCE_TCP", "PODER_JUDICIAL"}
         assert all(row["ruc"] == "20987654321" and row["url"] for row in rows)
+
+
+@pytest.mark.integration
+def test_official_api_real_data_load_is_idempotent(neo4j_driver, tmp_path):
+    import json
+    import os
+
+    if os.getenv('PE_OSCE_LIVE_TEST') != '1':
+        pytest.skip('Opt-in real API test: PE_OSCE_LIVE_TEST=1')
+    p = PeOsceSanctionsPipeline(neo4j_driver, data_dir=str(tmp_path), source_mode='api')
+    p.extract()
+    assert p.extraction_status['mode'] == 'api', 'Live test must not accept a fallback'
+    p.transform()
+    assert p.sanctions and len(p.raw_files) == 2
+    ids = [s['sanction_id'] for s in p.sanctions]
+    previous = None
+    for _ in range(2):
+        p.load()
+        with neo4j_driver.session() as session:
+            links = session.run(
+                'MATCH (p:Provider)-[r:HAS_SANCTION]->(s:Sanction) '
+                'WHERE s.sanction_id IN $ids '
+                'RETURN p.ruc AS provider, s.ruc AS ruc, s.sanction_id AS id, '
+                's.source_url AS url, r.source AS source ORDER BY id, provider', ids=ids,
+            ).data()
+            count = session.run(
+                'MATCH (s:Sanction) WHERE s.sanction_id IN $ids RETURN count(s) AS n', ids=ids,
+            ).single()['n']
+        assert count == len(ids) and len(links) == len(ids)
+        assert all(row['provider'] == row['ruc'] and row['url'] for row in links)
+        if previous is not None:
+            assert links == previous
+        previous = links
+    manifest = json.loads((p.raw_files[0].parent / 'manifest.json').read_text())
+    print(json.dumps({'rows_in': p.rows_in, 'providers': len(p.providers),
+                      'sanctions': len(ids), 'links': len(links), 'manifest': manifest}))
