@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import httpx
 import pandas as pd
 import pytest
 
@@ -54,3 +55,31 @@ def test_osce_collision_and_repeated_load_keep_correct_graph(neo4j_driver: Drive
             assert link["name"] == original["provider_name"].upper()
             assert link["url"] == original["source_url"]
             assert link["resolution"] == original["sanction_id"]
+
+
+@pytest.mark.integration
+def test_api_download_repeated_load_is_idempotent(neo4j_driver, tmp_path, monkeypatch):
+    names = ("sancionados.csv", "inhabilitaciones_judiciales.csv")
+    def handler(request):
+        if request.url.path.endswith("/attachment"):
+            return httpx.Response(200, json={"results": [
+                {"title": name, "_links": {"download": f"/download/{name}"}}
+                for name in names], "_links": {}})
+        return httpx.Response(200, content=b"RUC,NUMERO_RESOLUCION\n20987654321,API-DEMO\n")
+    client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client(
+        transport=httpx.MockTransport(handler), **kw))
+    p = PeOsceSanctionsPipeline(neo4j_driver, data_dir=str(tmp_path), source_mode="api")
+    for _ in range(2):
+        p.extract()
+        p.transform()
+        p.load()
+        with neo4j_driver.session() as session:
+            rows = session.run(
+                "MATCH (p:Provider {ruc: '20987654321'})-[:HAS_SANCTION]->(s:Sanction) "
+                "WHERE s.resolution_number = 'API-DEMO' "
+                "RETURN s.ruc AS ruc, s.sanction_source AS source, s.source_url AS url",
+            ).data()
+        assert len(rows) == 2
+        assert {row["source"] for row in rows} == {"OSCE_TCP", "PODER_JUDICIAL"}
+        assert all(row["ruc"] == "20987654321" and row["url"] for row in rows)

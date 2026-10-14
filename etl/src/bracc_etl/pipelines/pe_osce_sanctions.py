@@ -6,9 +6,11 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import pandas as pd
 
 from bracc_etl.base import Pipeline
@@ -59,6 +61,7 @@ class PeOsceSanctionsPipeline(Pipeline):
         data_dir: str = "./data",
         limit: int | None = None,
         chunk_size: int = 50_000,
+        source_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(driver, data_dir, limit=limit, chunk_size=chunk_size, **kwargs)
@@ -68,33 +71,128 @@ class PeOsceSanctionsPipeline(Pipeline):
         self.provider_sanctions: list[dict[str, Any]] = []
         self.raw_files: list[Path] = []
         self.normalized_csv_path: Path | None = None
+        self.source_mode = source_mode or os.getenv("PE_OSCE_SOURCE_MODE", "file")
+        if self.source_mode not in {"file", "api"}:
+            raise ValueError("source_mode must be file or api")
 
     def extract(self) -> None:
+        self.raw_files = []
+        if self.source_mode == "api":
+            try:
+                self._extract_via_api()
+                return
+            except (httpx.HTTPError, ValueError, OSError) as exc:
+                logger.warning("[%s] API failed; using local file fallback (%s)", self.name, exc)
+        self._extract_from_local_files()
+        if self.source_mode == "api" and not self.raw_files:
+            raise RuntimeError("OSCE API failed and no local fallback CSVs are available")
+
+    def _extract_via_api(self) -> None:
+        base = os.getenv(
+            "PE_OSCE_CONFLUENCE_BASE_URL", "https://osce-gob-pe.atlassian.net/wiki",
+        ).rstrip("/")
+        page = os.getenv("PE_OSCE_CONFLUENCE_PAGE_ID", "106889269")
+        wanted = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
+        downloads: dict[str, str] = {}
+        url = f"{base}/rest/api/content/{page}/child/attachment?limit=50"
+        visited: set[str] = set()
+        root = Path(self.data_dir) / "raw" / "pe" / "osce_sanctions" / "api"
+        root.mkdir(parents=True, exist_ok=True)
+        with httpx.Client(timeout=60, follow_redirects=True, headers={
+            "User-Agent": "PEACC-etl/1.0",
+        }) as client, tempfile.TemporaryDirectory(dir=root, prefix="pending-") as directory:
+            while url:
+                if url in visited or len(visited) >= 100:
+                    raise ValueError("Invalid OSCE attachment pagination")
+                visited.add(url)
+                response = client.get(url)
+                response.raise_for_status()
+                payload = response.json()
+                if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+                    raise ValueError("Invalid OSCE attachment listing")
+                for attachment in payload["results"]:
+                    if not isinstance(attachment, dict):
+                        raise ValueError("Invalid OSCE attachment")
+                    name = attachment.get("title")
+                    if not isinstance(name, str):
+                        raise ValueError("Invalid OSCE attachment title")
+                    if name in wanted:
+                        links = attachment.get("_links", {})
+                        if not isinstance(links, dict) or not links.get("download"):
+                            raise ValueError("OSCE attachment has no download link")
+                        if name in downloads:
+                            raise ValueError("Duplicate OSCE attachment")
+                        downloads[name] = self._api_url(base, links["download"])
+                links = payload.get("_links", {})
+                if not isinstance(links, dict):
+                    raise ValueError("Invalid OSCE pagination links")
+                url = self._api_url(base, links["next"]) if links.get("next") else ""
+            if set(downloads) != wanted:
+                raise ValueError("OSCE listing is missing required sanctions files")
+            staging = Path(directory)
+            for name, download in sorted(downloads.items()):
+                response = client.get(download)
+                response.raise_for_status()
+                path = staging / name
+                path.write_bytes(response.content)
+                rows = self._read_raw_csv(path)
+                kind = self._source_kind_for_file(name)
+                if rows.empty or not any(
+                    self._normalize_sanction_row(
+                        {str(key): value for key, value in row.to_dict().items()},
+                        i, source_kind=kind,
+                    )[0]
+                    for i, row in rows.iterrows()
+                ):
+                    raise ValueError("OSCE download has no valid sanctions")
+            snapshot = staging.with_name(staging.name.replace("pending-", "snapshot-", 1))
+            staging.rename(snapshot)
+            self.raw_files = sorted(snapshot / name for name in wanted)
+
+    @staticmethod
+    def _api_url(base: str, link: object) -> str:
+        if not isinstance(link, str) or not link:
+            raise ValueError("Invalid OSCE link")
+        url = link if link.startswith("https://") else f"{base}/{link.lstrip('/')}"
+        if not url.startswith(f"{base}/"):
+            raise ValueError("OSCE link is outside the configured API")
+        return url
+
+    def _extract_from_local_files(self) -> None:
         raw_dir_candidates = [
             Path(self.data_dir) / "raw" / "pe" / "osce_sanctions",
             Path(self.data_dir) / "pe" / "osce_sanctions",
             Path(self.data_dir) / "osce_sanctions",
         ]
-        raw_dir = next(
-            (path for path in raw_dir_candidates if path.exists() and path.is_dir()),
-            None,
-        )
-        if raw_dir is None:
-            logger.warning(
-                "[%s] raw sanctions directory not found in %s",
-                self.name,
-                raw_dir_candidates,
-            )
-            return
-        self.raw_files = sorted(
-            [
-                path for path in raw_dir.iterdir()
-                if path.is_file() and path.suffix.lower() == ".csv" and path.name != ".gitkeep"
-            ],
-        )
-        if not self.raw_files:
-            logger.warning("[%s] no sanction files found in %s", self.name, raw_dir)
-            return
+        for raw_dir in raw_dir_candidates:
+            if raw_dir.is_dir():
+                self.raw_files = sorted(
+                    path for path in raw_dir.iterdir()
+                    if path.is_file() and path.suffix.lower() == ".csv"
+                )
+                if self.source_mode == "api" and not self._complete_fallback(self.raw_files):
+                    self.raw_files = []
+                if self.raw_files:
+                    return
+        snapshots = Path(self.data_dir).glob("raw/pe/osce_sanctions/api/snapshot-*")
+        for snapshot in sorted(snapshots, key=lambda path: path.stat().st_mtime, reverse=True):
+            files = [snapshot / name for name in (
+                "inhabilitaciones_judiciales.csv", "sancionados.csv",
+            )]
+            if (all(path.is_file() for path in files)
+                    and (self.source_mode != "api" or self._complete_fallback(files))):
+                self.raw_files = files
+                return
+        logger.warning("[%s] no local sanction CSVs found", self.name)
+
+    def _complete_fallback(self, files: list[Path]) -> bool:
+        required = {"sancionados.csv", "inhabilitaciones_judiciales.csv"}
+        if not required.issubset({p.name for p in files}):
+            return False
+        try:
+            return all(not self._read_raw_csv(p).empty for p in files if p.name in required)
+        except (OSError, ValueError):
+            return False
 
     def transform(self) -> None:
         if self.raw_files:
