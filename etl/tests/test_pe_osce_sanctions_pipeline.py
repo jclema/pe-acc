@@ -171,7 +171,9 @@ def test_transform_uses_registered_source_url_when_row_has_none() -> None:
     pipeline.transform()
 
     source_url = pipeline.sanctions[0]["source_url"]
-    assert source_url.startswith("https://www.datosabiertos.gob.pe/")
+    assert source_url == (
+        "https://osce-gob-pe.atlassian.net/wiki/pages/viewpage.action?pageId=106889269"
+    )
     assert pipeline.providers[0]["source_url"] == source_url
 
 
