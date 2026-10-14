@@ -72,12 +72,23 @@ export interface SearchResponse {
   size: number;
 }
 
+export interface ProviderFieldSource {
+  source: string | null;
+  source_url: string | null;
+  source_dataset: string | null;
+  extraction_date: string | null;
+}
+
 export interface EntityDetail {
   id: string;
   type: string;
   properties: Record<string, string | number | boolean | null>;
   sources: SourceAttribution[];
   is_pep: boolean;
+  provider_provenance?: {
+    status: "structured" | "legacy" | "invalid";
+    fields: Record<string, ProviderFieldSource>;
+  } | null;
 }
 
 export interface GraphNode {

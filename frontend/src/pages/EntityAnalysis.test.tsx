@@ -187,6 +187,7 @@ describe("EntityAnalysis", () => {
 
     await waitFor(() => {
       expect(mockGetPublicEntity).toHaveBeenCalledWith("20123456789");
+      expect(screen.getByText("Procedencia por campo")).toBeInTheDocument();
     });
   });
 });

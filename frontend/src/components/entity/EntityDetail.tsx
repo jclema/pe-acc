@@ -6,6 +6,7 @@ import { SourceBadge } from "@/components/common/SourceBadge";
 import { type EntityType, entityColors } from "@/styles/tokens";
 
 import styles from "./EntityDetail.module.css";
+import { ProviderProvenance } from "./ProviderProvenance";
 
 interface EntityDetailProps {
   entityId: string | null;
@@ -88,7 +89,8 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
       ["Motivo", entity.properties.reason],
       ["Fuente URL", entity.properties.source_url],
       ["Extraccion", entity.properties.extraction_date],
-    ].filter(([, value]) => value != null && value !== "")
+    ].filter(([key, value]) => value != null && value !== ""
+      && !(entity.type === "provider" && ["Fuente URL", "Extraccion"].includes(String(key))))
     : [];
 
   const sanctionHighlights = entity && entity.type === "sanction"
@@ -108,8 +110,9 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
         "status", "tax_status", "tax_condition", "government_level", "sector", "selection_method",
         "call_date", "award_date", "date_start", "date_end", "ubigeo", "amount", "value",
         "reason", "source_url", "extraction_date",
+        "provider_source_records", "provider_field_sources",
       ].includes(key),
-    )
+    ).filter(([key]) => !(entity.type === "provider" && ["sources", "source_dataset"].includes(key)))
     : [];
 
   return (
@@ -200,6 +203,8 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
               </div>
             </div>
           )}
+
+          <ProviderProvenance entity={entity} />
 
           {entity.sources.length > 0 && (
             <div className={styles.sources}>

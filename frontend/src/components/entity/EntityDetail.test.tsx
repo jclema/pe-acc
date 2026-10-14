@@ -96,3 +96,18 @@ describe("EntityDetail", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
+
+it("presents provider field provenance without scalar download metadata or internal JSON", async () => {
+  mockGetEntityByElementId.mockResolvedValueOnce({
+    ...sampleEntity, type: "provider", properties: {
+      legal_name: "DEMO", source_url: "https://sunat.gob.pe/",
+      extraction_date: "DOWNLOAD_DATE", source_dataset: "old.csv",
+      provider_source_records: "PRIVATE", provider_field_sources: "PRIVATE",
+    },
+  });
+  render(<EntityDetail entityId="p:1" onClose={vi.fn()} />);
+  await screen.findByText("DEMO");
+  expect(screen.getByText("Procedencia por campo")).toBeInTheDocument();
+  expect(screen.queryByText("DOWNLOAD_DATE")).not.toBeInTheDocument();
+  expect(screen.queryByText("PRIVATE")).not.toBeInTheDocument();
+});

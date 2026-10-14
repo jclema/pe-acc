@@ -13,6 +13,7 @@ import { ControlsSidebar } from "@/components/graph/ControlsSidebar";
 import { AnalysisNav } from "@/components/analysis/AnalysisNav";
 import { ConnectionsList } from "@/components/analysis/ConnectionsList";
 import { EntityHeader } from "@/components/analysis/EntityHeader";
+import { ProviderProvenance } from "@/components/entity/ProviderProvenance";
 import { useGraphData } from "@/hooks/useGraphData";
 import { useEntityAnalysisStore } from "@/stores/entityAnalysis";
 import { useGraphExplorerStore } from "@/stores/graphExplorer";
@@ -182,6 +183,8 @@ export function EntityAnalysis() {
         exposure={null}
         onBack={handleBack}
       />
+
+      <ProviderProvenance entity={entity} />
 
       <div className={styles.body}>
         <AnalysisNav activeTab={activeTab} onTabChange={setActiveTab} />

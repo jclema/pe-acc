@@ -80,3 +80,26 @@ auth ni exposición de rutas; no acreditan una carga oficial. Integración previ
 #20 (ETL) → draft API → draft interfaz. Otros importadores y operación real siguen
 pendientes. Rollback de API: revertir este bloque; los campos ETL permanecen en
 Neo4j y no requieren una migración.
+
+## Lectura en la interfaz
+
+La ficha principal y el detalle de proveedor ofrecen **Procedencia por campo**,
+una sección nativa desplegable y operable con teclado. Muestra las fuentes
+SUNAT/OSCE seleccionadas para cada campo, enlace oficial seguro y nombre de
+archivo/corte informado. Cada metadato ausente muestra **Desconocido**.
+En demo/legacy o atribución inválida no usa la fuente general ni la fecha de
+descarga para completar campos. No repite el alias `name` si existe `legal_name`.
+
+Desde el checkout de interfaz, sin servicios externos ni Neo4j:
+```bash
+cd /home/edwar/.codex/worktrees/provider-provenance-ui/pe-acc
+(cd frontend && npm ci)
+make test-frontend
+(cd frontend && npm run lint && npm run type-check && npm run build)
+make neutrality check-public-claims
+python3 scripts/check_public_privacy.py --repo-root .
+```
+Verificación visual: componente real con fixture sintético, ancho 320 px, archivo
+largo y teclado (Enter, Tab y Espacio). No valida un dataset oficial ni operación
+real. Rollback de interfaz: revertir este bloque; los clientes anteriores pueden
+ignorar el campo API opcional. Mantener orden #20 → API → interfaz.
