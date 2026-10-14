@@ -99,7 +99,7 @@ async def test_connections_project_provider_fields_and_hide_internal_history(cli
     assert 'PRIVATE' not in response.text
 
 
-@pytest.mark.parametrize('source', ['legacy_unknown', 'private_source', None, 42])
+@pytest.mark.parametrize('source', ['legacy_unknown', 'private_source', 'seace_conosce', None, 42])
 def test_unknown_field_sources_cannot_publish_metadata(source):
     props = provider(provider_field_sources=json.dumps({'legal_name': {
         'source': source, 'source_url': 'https://sunat.gob.pe/', 'source_dataset': 'SECRET'}}))

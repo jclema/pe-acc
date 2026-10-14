@@ -8,7 +8,7 @@ from bracc.models.entity import ProviderFieldSource, ProviderProvenance
 
 FIELDS = ("legal_name", "name", "trade_name", "tax_status", "tax_condition", "provider_type",
           "ubigeo", "department", "province", "district")
-SOURCES = {"sunat_ruc", "pe_sunat_ruc", "osce_sanctions", "pe_osce_sanctions", "seace_conosce"}
+SOURCES = {"sunat_ruc", "pe_sunat_ruc", "osce_sanctions", "pe_osce_sanctions"}
 OFFICIAL_HOSTS = ("sunat.gob.pe", "osce.gob.pe", "oece.gob.pe", "gob.pe")
 
 
