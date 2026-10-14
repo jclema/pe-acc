@@ -17,6 +17,7 @@ from bracc.models.entity import (
 )
 from bracc.services.intelligence_provider import IntelligenceProvider
 from bracc.services.neo4j_service import execute_query, execute_query_single, sanitize_props
+from bracc.services.provider_provenance import project_provider_provenance
 from bracc.services.public_guard import (
     enforce_entity_lookup_enabled,
     enforce_entity_lookup_policy,
@@ -67,6 +68,7 @@ def _node_to_entity(
     props = dict(node)
     entity_type = labels[0].lower() if labels else "unknown"
     entity_label = labels[0] if labels else None
+    provenance = project_provider_provenance(props) if "Provider" in labels else None
     sources = []
     if "source" in props:
         source_val = props.pop("source")
@@ -75,6 +77,9 @@ def _node_to_entity(
         elif isinstance(source_val, str):
             sources = [SourceAttribution(database=source_val)]
     identity_quality = _infer_identity_quality(props, labels)
+    if provenance is not None and isinstance(props.get("sources"), list):
+        sources = [SourceAttribution(database=s) for s in props["sources"]
+                   if isinstance(s, str) and s.strip()]
     return EntityResponse(
         id=entity_id,
         type=entity_type,
@@ -84,6 +89,7 @@ def _node_to_entity(
         sources=sources,
         is_pep=_is_pep(props),
         exposure_tier=infer_exposure_tier(labels),
+        provider_provenance=provenance,
     )
 
 
