@@ -47,3 +47,36 @@ SUNAT por lotes, relaciones correctas, rollback del lote y concurrencia.
 Rollback de código no revierte cargas; respaldar y verificar destino antes de operar.
 Conservar la evidencia al volver al loader anterior requiere detener las cargas:
 el loader anterior puede sobrescribir campos escalares, aunque deja estas propiedades.
+
+## Contrato de lectura API
+
+Las respuestas existentes de entidad y conexiones agregan `provider_provenance`
+solo para `Provider` (otras entidades: `null`). Sus `fields` contienen únicamente
+campos actuales de identidad, estado tributario y geografía del contrato ETL.
+Cada campo tiene `source`, `source_url`, `source_dataset` y `extraction_date`,
+con `null` para metadatos desconocidos. No se usa la fuente escalar para atribuir
+los demás campos. `sources` conserva compatibilidad y usa la lista multi-fuente
+cuando existe; no expresa atribución por campo.
+
+`status` es `structured` para un objeto JSON de atribución, `legacy` cuando falta
+y `invalid` cuando no puede leerse. Atribuciones de forma/fuente desconocida
+quedan vacías. Demo/legacy no reconstruyen evidencia desde el historial.
+Solo se aceptan enlaces HTTPS de dominios oficiales peruanos (`gob.pe` y sus
+subdominios), sin credenciales ni puertos distintos de 443. El archivo se reduce
+al nombre base; el corte requiere fecha ISO completa. No se deriva de la fecha
+de descarga. El historial y el JSON interno nunca se aplanan en `properties`,
+incluso en grafos. Los controles `PUBLIC_MODE` existentes siguen aplicándose.
+
+Validación local de este bloque, sin conectarse a la base del usuario:
+```bash
+cd /home/edwar/.codex/worktrees/provider-provenance-api/pe-acc
+(cd api && uv sync --frozen --extra dev)
+make test-api
+(cd api && uv run --frozen ruff check src tests && uv run --frozen mypy src)
+make neutrality check-public-claims
+```
+Las pruebas usan entidades sintéticas y un driver simulado. No cambian esquema,
+auth ni exposición de rutas; no acreditan una carga oficial. Integración prevista:
+#20 (ETL) → draft API → draft interfaz. Otros importadores y operación real siguen
+pendientes. Rollback de API: revertir este bloque; los campos ETL permanecen en
+Neo4j y no requieren una migración.

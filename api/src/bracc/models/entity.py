@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -7,6 +7,18 @@ class SourceAttribution(BaseModel):
     database: str
     record_id: str | None = None
     extracted_at: str | None = None
+
+
+class ProviderFieldSource(BaseModel):
+    source: str | None = None
+    source_url: str | None = None
+    source_dataset: str | None = None
+    extraction_date: str | None = None
+
+
+class ProviderProvenance(BaseModel):
+    status: Literal["structured", "legacy", "invalid"]
+    fields: dict[str, ProviderFieldSource]
 
 
 class EntityResponse(BaseModel):
@@ -18,6 +30,7 @@ class EntityResponse(BaseModel):
     sources: list[SourceAttribution]
     is_pep: bool = False
     exposure_tier: str = "public_safe"
+    provider_provenance: ProviderProvenance | None = None
 
 
 class ConnectionResponse(BaseModel):
