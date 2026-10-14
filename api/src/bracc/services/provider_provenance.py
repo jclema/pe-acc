@@ -23,6 +23,8 @@ def _official_url(value: Any) -> str | None:
     try:
         url = urlsplit(text)
         host = url.hostname or ""
+        if host == "example.gob.pe" or host.endswith(".example.gob.pe"):
+            return None
         if (url.scheme == "https" and not url.username and not url.password
                 and url.port in (None, 443)
                 and any(host == h or host.endswith("." + h) for h in OFFICIAL_HOSTS)):

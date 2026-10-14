@@ -253,7 +253,7 @@ it("labels RNP filters in Spanish and toggles the relationship identifier", () =
 it("keeps a clicked node card open for source interaction and dismisses it on background click", () => {
   vi.useFakeTimers();
   const node = { ...sampleData.nodes[2], x: 0, y: 0, properties: {
-    source_url: "https://example.org/osce", sanction_source: "OSCE_TCP",
+    source_url: "https://www.datosabiertos.gob.pe/dataset/proveedores-sancionados", sanction_source: "OSCE_TCP",
   } };
   const { rerender } = render(<GraphCanvas {...defaultProps} />);
   act(() => (capturedProps.onNodeClick as (node: unknown) => void)(node));
@@ -263,7 +263,7 @@ it("keeps a clicked node card open for source interaction and dismisses it on ba
   });
   const link = screen.getByRole("link", { name: /Abrir fuente/ });
   fireEvent.click(link);
-  expect(link).toHaveAttribute("href", "https://example.org/osce");
+  expect(link).toHaveAttribute("href", "https://www.datosabiertos.gob.pe/dataset/proveedores-sancionados");
   fireEvent.click(screen.getByRole("button", { name: "Cerrar ficha" }));
   expect(screen.queryByRole("link", { name: /Abrir fuente/ })).not.toBeInTheDocument();
   act(() => (capturedProps.onNodeClick as (node: unknown) => void)(node));
@@ -272,4 +272,12 @@ it("keeps a clicked node card open for source interaction and dismisses it on ba
   act(() => (capturedProps.onNodeClick as (node: unknown) => void)(node));
   rerender(<GraphCanvas {...defaultProps} enabledTypes={new Set(["person", "company"])} />);
   expect(screen.queryByRole("link", { name: /Abrir fuente/ })).not.toBeInTheDocument();
+});
+
+
+it("identifies a demo edge source without linking it", () => {
+  openEdge({ ...rnp, properties: { ...rnp.properties,
+    source_url: "https://example.gob.pe/source" } });
+  expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  expect(screen.getByText("Datos de demostración; sin enlace verificable.")).toBeVisible();
 });

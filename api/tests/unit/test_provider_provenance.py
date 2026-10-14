@@ -58,7 +58,8 @@ def test_legacy_sources_do_not_claim_field_attribution_or_reconstruct_history():
 @pytest.mark.parametrize('url', ['javascript:alert(1)', 'https://sunat.gob.pe.evil.com/',
                                  'https://user:pass@sunat.gob.pe/', 'http://sunat.gob.pe/',
                                  'https://sunat.gob.pe:444/', 'https://evil.com/',
-                                 'https://sunat.gob.pe/\nsecret'])
+                                 'https://sunat.gob.pe/\nsecret', 'https://example.gob.pe/osce/001',
+                                 'https://sub.example.gob.pe/source'])
 def test_untrusted_links_and_invalid_metadata_are_not_published(url):
     props = provider(provider_field_sources=json.dumps({'legal_name': {
         'source': 'sunat_ruc', 'source_url': url, 'extraction_date': 'downloaded yesterday',

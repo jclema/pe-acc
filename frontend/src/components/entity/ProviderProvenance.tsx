@@ -1,4 +1,5 @@
 import type { EntityDetail } from "@/api/client";
+import { isDemoSourceUrl, safeSourceUrl } from "@/lib/sourceUrl";
 import styles from "./ProviderProvenance.module.css";
 
 const fields: [string, string][] = [
@@ -13,7 +14,7 @@ const sourceLabels: Record<string, string> = {
 };
 
 function officialUrl(value: string | null | undefined): string | null {
-  if (!value || /\s/.test(value) || /[\u0000-\u001f]/.test(value)) return null;
+  if (!value || !safeSourceUrl(value)) return null;
   try {
     const url = new URL(value);
     if (url.protocol === "https:" && !url.username && !url.password && !url.port
@@ -25,6 +26,8 @@ function officialUrl(value: string | null | undefined): string | null {
 export function ProviderProvenance({ entity }: { entity: EntityDetail }) {
   if (entity.type !== "provider") return null;
   const provenance = entity.provider_provenance;
+  const isDemo = isDemoSourceUrl(entity.properties.source_url)
+    || Object.values(provenance?.fields ?? {}).some((field) => isDemoSourceUrl(field.source_url));
   const currentFields = fields.filter(([key]) =>
     typeof entity.properties[key] === "string" && String(entity.properties[key]).trim()
     && !(key === "name" && entity.properties.legal_name));
@@ -33,6 +36,7 @@ export function ProviderProvenance({ entity }: { entity: EntityDetail }) {
     <details className={styles.section}>
       <summary>Procedencia por campo</summary>
       <div className={styles.content}>
+        {isDemo && <p>Incluye datos de demostración; los enlaces de ejemplo no son verificables.</p>}
         {provenance?.status !== "structured" && (
           <p>Atribución por campo desconocida para este proveedor.</p>
         )}

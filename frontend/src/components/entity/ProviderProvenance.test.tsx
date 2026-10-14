@@ -95,3 +95,36 @@ it.each(["2026-02-31", "2026-99-01", "downloaded today"])("does not present inva
   } } });
   expect(screen.queryByText(date)).not.toBeInTheDocument();
 });
+
+
+it("labels demo provider metadata without inferring a real official source", async () => {
+  await open({ ...entity, properties: { legal_name: "DEMO",
+    source_url: "https://example.gob.pe/osce/001" },
+    provider_provenance: { status: "structured", fields: { legal_name: {
+      source: "sunat_ruc", source_url: "https://example.gob.pe/sunat/20123456789",
+      source_dataset: "demo.csv", extraction_date: "2026-04-01" } } } });
+  expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  expect(screen.getByText("Incluye datos de demostración; los enlaces de ejemplo no son verificables.")).toBeVisible();
+  expect(screen.getByText("demo.csv")).toBeVisible();
+});
+
+it("identifies a legacy demo URL without attributing its fields", async () => {
+  await open({ ...entity, properties: { legal_name: "DEMO",
+    source_url: "https://example.gob.pe/osce/001" }, provider_provenance: null });
+  expect(screen.getByText("Incluye datos de demostración; los enlaces de ejemplo no son verificables.")).toBeVisible();
+  expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  expect(screen.getAllByText("Desconocido")).toHaveLength(3);
+});
+
+
+it("keeps a real field source linked when another field has a demo URL", async () => {
+  await open({ ...entity, provider_provenance: { status: "structured", fields: {
+    legal_name: { source: "sunat_ruc", source_url: "https://example.gob.pe/sunat",
+      source_dataset: "demo.csv", extraction_date: null },
+    tax_status: { source: "osce_sanctions", source_url: "https://www.gob.pe/osce",
+      source_dataset: "osce.csv", extraction_date: null },
+  } } });
+  expect(screen.getByText("Incluye datos de demostración; los enlaces de ejemplo no son verificables.")).toBeVisible();
+  expect(screen.getAllByRole("link")).toHaveLength(1);
+  expect(screen.getByRole("link", { name: "Fuente oficial de Estado tributario" })).toHaveAttribute("href", "https://www.gob.pe/osce");
+});

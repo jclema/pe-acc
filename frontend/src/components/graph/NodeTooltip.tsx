@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { dataColors, type DataEntityType } from "@/styles/tokens";
+import { isDemoSourceUrl, safeSourceUrl } from "@/lib/sourceUrl";
 
 import styles from "./NodeTooltip.module.css";
 
@@ -47,18 +48,6 @@ function formatSourceLabel(value: string | null): string | null {
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
-function safeSourceUrl(value: unknown): string | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-
-  const candidate = value.trim();
-  try {
-    const parsed = new URL(candidate);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? candidate : null;
-  } catch {
-    return null;
-  }
-}
-
 function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
   const { t } = useTranslation();
 
@@ -101,6 +90,9 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
         </span>
       </div>
       <span className={styles.name}>{node.label}</span>
+      {isDemoSourceUrl(node.properties?.source_url) && (
+        <span className={styles.meta}>Datos de demostración; sin enlace verificable.</span>
+      )}
       {!isSanction && node.document_id && (
         <span className={styles.document}>{node.document_id}</span>
       )}

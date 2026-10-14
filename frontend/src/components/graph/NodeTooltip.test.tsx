@@ -58,3 +58,14 @@ describe("NodeTooltip", () => {
     },
   );
 });
+
+
+it.each(["https://example.gob.pe/osce/001", "https://EXAMPLE.GOB.PE/osce/001",
+  "https://sub.example.gob.pe/osce/001", "https://example.org/source"])(
+  "labels demo sources without publishing a broken link (%s)", (source_url) => {
+    render(<NodeTooltip node={{ ...baseSanctionNode,
+      properties: { ...baseSanctionNode.properties, source_url } }} x={0} y={0} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText("Datos de demostración; sin enlace verificable.")).toBeVisible();
+  },
+);

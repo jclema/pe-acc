@@ -24,7 +24,8 @@ Un historial inválido o de otro RUC aborta y revierte el lote; no se descarta.
 Lectura y escritura comparten una transacción con bloqueo y reintentos del driver.
 Se requiere la restricción **ya existente** `provider_ruc_unique` del esquema.
 No instala restricciones, migra producción ni modifica relaciones de sanciones.
-SEACE/RNP y presentación/API estructurada de evidencia requieren bloques posteriores.
+Otros importadores y operación real requieren bloques posteriores; API e interfaz
+se describen abajo como entregas separadas de esta pila.
 
 ## Comprobación aislada
 
@@ -103,3 +104,30 @@ Verificación visual: componente real con fixture sintético, ancho 320 px, arch
 largo y teclado (Enter, Tab y Espacio). No valida un dataset oficial ni operación
 real. Rollback de interfaz: revertir este bloque; los clientes anteriores pueden
 ignorar el campo API opcional. Mantener orden #20 → API → interfaz.
+
+## Enlaces en datos de demostración
+
+Los CSV de `data/demo/pe/` usan entidades, resoluciones y URLs sintéticas como
+`https://example.gob.pe/osce/001`. No existe una publicación oficial equivalente
+que pueda inferirse de ese registro. La API omite esas URLs en la atribución
+seleccionada; la interfaz reconoce los hosts de ejemplo conocidos y muestra
+**Datos de demostración; sin enlace verificable.**, sin enlace clicable.
+La ficha indica que incluye datos demo; conserva enlaces válidos de otros campos
+cuando la evidencia es mixta. Aplica también a tarjetas de nodos y relaciones. Detectar un enlace demo
+no atribuye campos legacy ni completa metadatos ausentes. Otros enlaces mantienen
+sus validaciones; una URL admitida no acredita disponibilidad HTTP ni autenticidad
+del registro. No se sustituyen URLs sintéticas por portales generales ni se carga
+un dataset oficial para corregir la presentación. El volumen de datos no cambia.
+
+Desde `/home/edwar/.codex/worktrees/demo-source-links/pe-acc`:
+```bash
+(cd api && uv sync --frozen --extra dev)
+(cd frontend && npm ci)
+make test-api test-frontend
+(cd api && uv run --frozen ruff check src tests && uv run --frozen mypy src)
+(cd frontend && npm run lint && npm run type-check && npm run build)
+make neutrality check-public-claims
+python3 scripts/check_public_privacy.py --repo-root .
+```
+Este fix se apila sobre el draft de interfaz #23. Rollback: revertir su commit;
+no requiere migración ni cambios en ingesta, schema, auth o exposición de rutas.
