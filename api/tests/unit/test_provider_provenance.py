@@ -58,7 +58,10 @@ def test_legacy_sources_do_not_claim_field_attribution_or_reconstruct_history():
 @pytest.mark.parametrize('url', ['javascript:alert(1)', 'https://sunat.gob.pe.evil.com/',
                                  'https://user:pass@sunat.gob.pe/', 'http://sunat.gob.pe/',
                                  'https://sunat.gob.pe:444/', 'https://evil.com/',
-                                 'https://sunat.gob.pe/\nsecret'])
+                                 'https://sunat.gob.pe/\nsecret', 'https://example.gob.pe/osce/001',
+                                 'https://sub.example.gob.pe/source',
+                                 'https://other.atlassian.net/wiki',
+                                 'https://osce-gob-pe.atlassian.net.evil.com/wiki'])
 def test_untrusted_links_and_invalid_metadata_are_not_published(url):
     props = provider(provider_field_sources=json.dumps({'legal_name': {
         'source': 'sunat_ruc', 'source_url': url, 'extraction_date': 'downloaded yesterday',
@@ -113,3 +116,12 @@ async def test_public_lookup_boundary_remains_disabled(client, monkeypatch):
     monkeypatch.setattr(settings, 'public_allow_entity_lookup', False)
     response = await client.get(f'/api/v1/entity/{RUC}')
     assert response.status_code == 403
+
+
+def test_registered_osce_tenant_is_a_selected_source_link():
+    url = 'https://osce-gob-pe.atlassian.net/wiki/pages/viewpage.action?pageId=106889269'
+    props = provider(provider_field_sources=json.dumps({'legal_name': {
+        'source': 'osce_sanctions', 'source_url': url, 'source_dataset': 'sancionados.csv'}}))
+    field = _node_to_entity(props, ['Provider'], RUC).model_dump()[
+        'provider_provenance']['fields']['legal_name']
+    assert field['source_url'] == url
