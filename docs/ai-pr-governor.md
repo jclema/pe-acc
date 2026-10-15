@@ -52,6 +52,39 @@ Sem isso, o passo `gh pr review --approve` pode falhar.
 4. **Approve + merge**
    - só com kill switch ativo (`CLAUDE_AUTOMERGE_ENABLED=true`)
    - aprovação formal + squash merge
+
+## Preparação de cada PR
+
+Antes de entregar uma PR para revisão, execute scanner e preflight local com
+título, descrição, comentários e diff atuais. A coleta de contexto está no passo
+`Run preflight policy` do workflow. Use a base real da PR para contar arquivos e
+adições + remoções; numa pilha, não conte novamente as alterações da dependência.
+Registre o SHA, a base, as métricas e todas as razões de bloqueio na descrição.
+
+Um job verde significa que o comando executou; consulte `eligible` e `reasons`
+no JSON. CI verde e preflight elegível não substituem a avaliação de Claude nem
+autorizam merge. Drafts, forks, caminhos sensíveis e limites continuam bloqueados.
+
+A allowlist inclui sete arquivos explícitos de procedência em ETL/API; isso não
+libera diretórios inteiros. Outros arquivos de backend continuam fora do escopo
+automático. Alterar política ou scanner exige revisão humana, pois esses caminhos
+permanecem fora da allowlist e na denylist quando aplicável.
+
+O scanner mantém as regras e pontuações existentes. Apenas o identificador Python
+`encoded`, numa linha sintaticamente válida de um hunk `.py`, não conta como
+linguagem de ofuscação. Strings, comentários, prosa, contexto desconhecido e outras
+regras seguem sendo analisados. Não há exceção por número de PR ou autor.
+Regressões de política e scanner rodam no job `Repository Contracts`:
+```bash
+python3 -m unittest discover -s scripts/tests
+```
+
+O workflow atual só atende PRs com base em `main`. Em pilhas, avalie e integre
+as dependências por ordem; depois atualize a base, recalcule o diff e valide
+novamente. Não troque antecipadamente a base de todas para `main`: isso pode
+incluir alterações das dependências e exceder os limites. Mantenha o kill switch
+desativado durante a revisão destas mudanças de manutenção.
+
 ## Kill switch e rollback
 
 ### Kill switch imediato

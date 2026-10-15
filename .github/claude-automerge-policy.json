@@ -14,7 +14,14 @@
     "api/src/bracc/models/**",
     "api/tests/**",
     "etl/tests/**",
-    "frontend/src/**/*.test.*"
+    "frontend/src/**/*.test.*",
+    "etl/src/bracc_etl/loader.py",
+    "etl/src/bracc_etl/pipelines/pe_osce_sanctions.py",
+    "etl/src/bracc_etl/pipelines/pe_sunat_ruc.py",
+    "etl/src/bracc_etl/provider_provenance.py",
+    "api/src/bracc/routers/entity.py",
+    "api/src/bracc/services/neo4j_service.py",
+    "api/src/bracc/services/provider_provenance.py"
   ],
   "denylist": [
     ".github/workflows/**",

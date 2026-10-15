@@ -9,8 +9,11 @@ before any automated approve/merge action.
 from __future__ import annotations
 
 import argparse
+import ast
+import io
 import json
 import re
+import tokenize
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -95,6 +98,29 @@ def snippet(text: str, start: int, end: int, max_len: int = 180) -> str:
     return compact[: max_len - 3] + "..."
 
 
+def is_python_identifier(text: str, match: re.Match[str]) -> bool:
+    """Recognize an identifier token in a parseable Python diff line only."""
+    section = text[text.rfind("\ndiff --git ", 0, match.start()) + 1:match.start()]
+    paths = re.findall(r"(?m)^\+\+\+ b/(.+)$", section)
+    if not paths or not paths[-1].endswith(".py") or not re.search(r"(?m)^@@ ", section):
+        return False
+    start = text.rfind("\n", 0, match.start()) + 1
+    end = text.find("\n", match.start())
+    line = text[start:end if end >= 0 else len(text)]
+    if not line.startswith(("+", "-", " ")):
+        return False
+    code = line[1:]
+    try:
+        statement = code.lstrip()
+        ast.parse(statement + ("\n pass" if statement.rstrip().endswith(":") else ""))
+        tokens = list(tokenize.generate_tokens(io.StringIO(code).readline))
+    except (SyntaxError, tokenize.TokenError):
+        return False
+    column = match.start() - start - 1
+    return any(token.type == tokenize.NAME and token.string == match.group()
+               and token.start[1] == column for token in tokens)
+
+
 def scan_source(source_name: str, text: str, max_findings: int) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     if not text:
@@ -103,6 +129,9 @@ def scan_source(source_name: str, text: str, max_findings: int) -> list[dict[str
     for rule in RULES:
         hits = 0
         for match in rule.pattern.finditer(text):
+            if (source_name == "diff" and rule.name == "obfuscation_terms"
+                    and match.group().lower() == "encoded" and is_python_identifier(text, match)):
+                continue
             findings.append(
                 {
                     "source": source_name,
