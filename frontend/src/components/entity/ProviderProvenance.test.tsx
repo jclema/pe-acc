@@ -51,7 +51,8 @@ describe("ProviderProvenance", () => {
 
   it.each(["javascript:alert(1)", "https://evil.com/", "http://sunat.gob.pe/",
     "https://sunat.gob.pe.evil.com/", "https://user:pass@sunat.gob.pe/",
-    "https://sunat.gob.pe:444/", "https://sunat.gob.pe/\nsecret"])(
+    "https://sunat.gob.pe:444/", "https://sunat.gob.pe/\nsecret", "https://other.atlassian.net/wiki",
+    "https://osce-gob-pe.atlassian.net.evil.com/wiki"])(
     "rejects unsafe links: %s", async (url) => {
       await open({ ...entity, provider_provenance: { status: "structured", fields: {
         legal_name: { source: "sunat_ruc", source_url: url,
@@ -127,4 +128,14 @@ it("keeps a real field source linked when another field has a demo URL", async (
   expect(screen.getByText("Incluye datos de demostración; los enlaces de ejemplo no son verificables.")).toBeVisible();
   expect(screen.getAllByRole("link")).toHaveLength(1);
   expect(screen.getByRole("link", { name: "Fuente oficial de Estado tributario" })).toHaveAttribute("href", "https://www.gob.pe/osce");
+});
+
+
+it("links the exact OSCE tenant registered for real datasets", async () => {
+  const url = "https://osce-gob-pe.atlassian.net/wiki/pages/viewpage.action?pageId=106889269";
+  await open({ ...entity, provider_provenance: { status: "structured", fields: {
+    legal_name: { source: "osce_sanctions", source_url: url,
+      source_dataset: "sancionados.csv", extraction_date: "2026-08-08" },
+  } } });
+  expect(screen.getByRole("link", { name: "Fuente oficial de Razón social" })).toHaveAttribute("href", url);
 });

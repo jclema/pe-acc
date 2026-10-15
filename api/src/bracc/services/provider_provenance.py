@@ -27,7 +27,8 @@ def _official_url(value: Any) -> str | None:
             return None
         if (url.scheme == "https" and not url.username and not url.password
                 and url.port in (None, 443)
-                and any(host == h or host.endswith("." + h) for h in OFFICIAL_HOSTS)):
+                and (host == "osce-gob-pe.atlassian.net"
+                     or any(host == h or host.endswith("." + h) for h in OFFICIAL_HOSTS))):
             return text
     except ValueError:
         pass

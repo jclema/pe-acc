@@ -18,7 +18,8 @@ function officialUrl(value: string | null | undefined): string | null {
   try {
     const url = new URL(value);
     if (url.protocol === "https:" && !url.username && !url.password && !url.port
-      && (url.hostname === "gob.pe" || url.hostname.endsWith(".gob.pe"))) return url.href;
+      && (url.hostname === "gob.pe" || url.hostname.endsWith(".gob.pe")
+        || url.hostname === "osce-gob-pe.atlassian.net")) return url.href;
   } catch { /* Unknown or malformed URL. */ }
   return null;
 }

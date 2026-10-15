@@ -63,7 +63,8 @@ cuando existe; no expresa atribución por campo.
 y `invalid` cuando no puede leerse. Atribuciones de forma/fuente desconocida
 quedan vacías. Demo/legacy no reconstruyen evidencia desde el historial.
 Solo se aceptan enlaces HTTPS de dominios oficiales peruanos (`gob.pe` y sus
-subdominios), sin credenciales ni puertos distintos de 443. El archivo se reduce
+subdominios) y el tenant exacto `osce-gob-pe.atlassian.net` registrado para OSCE,
+sin credenciales ni puertos distintos de 443. Otros tenants Atlassian se rechazan. El archivo se reduce
 al nombre base; el corte requiere fecha ISO completa. No se deriva de la fecha
 de descarga. El historial y el JSON interno nunca se aplanan en `properties`,
 incluso en grafos. Los controles `PUBLIC_MODE` existentes siguen aplicándose.
