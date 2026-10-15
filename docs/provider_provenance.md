@@ -58,6 +58,8 @@ Cada campo tiene `source`, `source_url`, `source_dataset` y `extraction_date`,
 con `null` para metadatos desconocidos. No se usa la fuente escalar para atribuir
 los demás campos. `sources` conserva compatibilidad y usa la lista multi-fuente
 cuando existe; no expresa atribución por campo.
+La consulta de conexiones admite `Provider` y la relación peruana `HAS_SANCTION`;
+mantiene los filtros de nodos privados y los controles de acceso existentes.
 
 `status` es `structured` para un objeto JSON de atribución, `legacy` cuando falta
 y `invalid` cuando no puede leerse. Atribuciones de forma/fuente desconocida
@@ -132,3 +134,29 @@ python3 scripts/check_public_privacy.py --repo-root .
 ```
 Este fix se apila sobre el draft de interfaz #23. Rollback: revertir su commit;
 no requiere migración ni cambios en ingesta, schema, auth o exposición de rutas.
+
+## Criterio para una prueba con datos reales
+
+`make dev` comprueba el arranque, pero una ficha demo no acredita procedencia real.
+Probar el recorrido **CSV original → ETL → Neo4j → API → interfaz**, usando una
+base temporal y una muestra de empresas, con estos criterios:
+
+1. Registrar el hash del archivo original, su nombre y el corte que informa el
+   contenido. Conservar sus bytes y metadatos al seleccionar la muestra.
+2. Cargarla dos veces: valores, observaciones y relaciones deben permanecer
+   idénticos. La prioridad entre SUNAT y OSCE requiere además la integración
+   multi-fuente indicada arriba; una muestra OSCE no la acredita por sí sola.
+3. Contrastar nombre y corte con las filas originales. La API debe responder
+   `structured`, atribución OSCE, archivo y URL esperados por identificador,
+   element ID y conexiones; los JSON internos deben permanecer ocultos.
+4. Buscar la empresa en la interfaz, abrir **Procedencia por campo** y comprobar
+   nombre, fuente, archivo, corte y destino del enlace en el navegador.
+
+Un worktree por sí solo no aísla los datos: el Compose habitual comparte nombre
+de contenedor y volumen. La prueba debe tener proyecto, almacenamiento, puertos
+e imágenes propios. Reprocesar la base existente requiere una operación aparte.
+Datos reales cargados antes de este contrato pueden responder `legacy`.
+
+El enlace OSCE registrado conduce al catálogo que publica los CSV; no identifica
+por sí solo el documento individual de cada resolución. El CSV local sirve para
+reproducir la carga, pero esta interfaz no ofrece su descarga local.
