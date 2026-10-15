@@ -87,12 +87,13 @@ Neo4j y no requieren una migración.
 
 ## Lectura en la interfaz
 
-La ficha principal y el detalle de proveedor ofrecen **Procedencia por campo**,
-una sección nativa desplegable y operable con teclado. Muestra las fuentes
-SUNAT/OSCE seleccionadas para cada campo, enlace oficial seguro y nombre de
-archivo/corte informado. Cada metadato ausente muestra **Desconocido**.
-En demo/legacy o atribución inválida no usa la fuente general ni la fecha de
-descarga para completar campos. No repite el alias `name` si existe `legal_name`.
+La referencia a la fuente usa las tarjetas existentes del grafo. La tarjeta de
+proveedor ofrece el enlace como la de sanción, con los mismos estilos. El panel
+de detalle enlaza únicamente la insignia que coincide con la atribución del
+nombre seleccionado; otras fuentes conservan su insignia sin recibir esa URL.
+Se retira el desplegable independiente **Procedencia por campo** para conservar
+el espacio y diseño de la ficha. Archivo, corte y atribución por campo permanecen
+en el contrato del backend. Demo/legacy no reconstruyen metadatos ausentes.
 
 Desde el checkout de interfaz, sin servicios externos ni Neo4j:
 ```bash
@@ -103,9 +104,9 @@ make test-frontend
 make neutrality check-public-claims
 python3 scripts/check_public_privacy.py --repo-root .
 ```
-Verificación visual: componente real con fixture sintético, ancho 320 px, archivo
-largo y teclado (Enter, Tab y Espacio). No valida un dataset oficial ni operación
-real. Rollback de interfaz: revertir este bloque; los clientes anteriores pueden
+Verificar en navegador que la ficha conserve su diseño y la tarjeta fijada
+permita abrir la fuente y cerrarse con el control existente.
+Rollback de interfaz: revertir este bloque; los clientes anteriores pueden
 ignorar el campo API opcional. Mantener orden #20 → API → interfaz.
 
 ## Enlaces en datos de demostración
@@ -115,8 +116,8 @@ Los CSV de `data/demo/pe/` usan entidades, resoluciones y URLs sintéticas como
 que pueda inferirse de ese registro. La API omite esas URLs en la atribución
 seleccionada; la interfaz reconoce los hosts de ejemplo conocidos y muestra
 **Datos de demostración; sin enlace verificable.**, sin enlace clicable.
-La ficha indica que incluye datos demo; conserva enlaces válidos de otros campos
-cuando la evidencia es mixta. Aplica también a tarjetas de nodos y relaciones. Detectar un enlace demo
+Las tarjetas indican datos demo y conservan enlaces válidos de otros registros.
+Aplica también a relaciones. Detectar un enlace demo
 no atribuye campos legacy ni completa metadatos ausentes. Otros enlaces mantienen
 sus validaciones; una URL admitida no acredita disponibilidad HTTP ni autenticidad
 del registro. No se sustituyen URLs sintéticas por portales generales ni se carga
@@ -149,8 +150,8 @@ base temporal y una muestra de empresas, con estos criterios:
 3. Contrastar nombre y corte con las filas originales. La API debe responder
    `structured`, atribución OSCE, archivo y URL esperados por identificador,
    element ID y conexiones; los JSON internos deben permanecer ocultos.
-4. Buscar la empresa en la interfaz, abrir **Procedencia por campo** y comprobar
-   nombre, fuente, archivo, corte y destino del enlace en el navegador.
+4. Buscar la empresa y abrir su tarjeta existente para comprobar el enlace de
+   fuente. Contrastar archivo y corte con los metadatos de la API.
 
 Un worktree por sí solo no aísla los datos: el Compose habitual comparte nombre
 de contenedor y volumen. La prueba debe tener proyecto, almacenamiento, puertos

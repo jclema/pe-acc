@@ -42,6 +42,7 @@ function formatSourceLabel(value: string | null): string | null {
     osce_sanctions: "OSCE - Proveedores sancionados",
     OSCE_TCP: "OSCE - Tribunal de Contrataciones",
     PODER_JUDICIAL: "Poder Judicial",
+    sunat_ruc: "SUNAT - Padron RUC",
     pe_sunat_ruc: "SUNAT - Padron RUC",
   };
 
@@ -96,12 +97,12 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
       {!isSanction && node.document_id && (
         <span className={styles.document}>{node.document_id}</span>
       )}
-      {isSanction && (
+      {(isSanction || node.type === "provider") && (
         <div className={styles.summary}>
-          {sanctionType && <span className={styles.meta}><strong>Tipo:</strong> {sanctionType}</span>}
-          {sanctionReason && <span className={styles.meta}><strong>Detalle:</strong> {sanctionReason}</span>}
-          {resolution && <span className={styles.meta}><strong>Resolución:</strong> {resolution}</span>}
-          {validity && <span className={styles.meta}><strong>Vigencia:</strong> {validity}</span>}
+          {isSanction && sanctionType && <span className={styles.meta}><strong>Tipo:</strong> {sanctionType}</span>}
+          {isSanction && sanctionReason && <span className={styles.meta}><strong>Detalle:</strong> {sanctionReason}</span>}
+          {isSanction && resolution && <span className={styles.meta}><strong>Resolución:</strong> {resolution}</span>}
+          {isSanction && validity && <span className={styles.meta}><strong>Vigencia:</strong> {validity}</span>}
           {sanctionSourceLabel && (
             <span className={styles.meta}>
               <strong>Fuente:</strong>{" "}

@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import { type EntityDetail as EntityDetailData, getEntity, getEntityByElementId } from "@/api/client";
 import { SourceBadge } from "@/components/common/SourceBadge";
 import { type EntityType, entityColors } from "@/styles/tokens";
+import { safeSourceUrl } from "@/lib/sourceUrl";
 
 import styles from "./EntityDetail.module.css";
-import { ProviderProvenance } from "./ProviderProvenance";
 
 interface EntityDetailProps {
   entityId: string | null;
@@ -115,6 +115,10 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
     ).filter(([key]) => !(entity.type === "provider" && ["sources", "source_dataset"].includes(key)))
     : [];
 
+  const attribution = entity?.type === "provider" && entity.provider_provenance?.status === "structured"
+    ? entity.provider_provenance.fields.legal_name ?? entity.provider_provenance.fields.name : null;
+  const sourceUrl = safeSourceUrl(attribution?.source_url);
+
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
@@ -204,14 +208,14 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
             </div>
           )}
 
-          <ProviderProvenance entity={entity} />
-
           {entity.sources.length > 0 && (
             <div className={styles.sources}>
               <span className={styles.sourcesLabel}>{t("common.source")}:</span>
-              {entity.sources.map((s) => (
-                <SourceBadge key={s.database} source={s.database} />
-              ))}
+              {entity.sources.map((s) => sourceUrl && s.database === attribution?.source ? (
+                <a key={s.database} href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                  <SourceBadge source={s.database} />
+                </a>
+              ) : <SourceBadge key={s.database} source={s.database} />)}
             </div>
           )}
         </div>
