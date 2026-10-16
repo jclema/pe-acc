@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { dataColors, type DataEntityType } from "@/styles/tokens";
+import { MoneyLabel } from "@/components/common/MoneyLabel";
 
 import styles from "./NodeTooltip.module.css";
 
@@ -130,6 +131,28 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
           )}
         </div>
       )}
+      {node.type === "award" && <div className={styles.summary}>
+        {node.properties?.currency === "PEN" && typeof node.properties.amount === "number" && (
+          <span className={styles.meta}><strong>{t("graph.edge.awardAmount")}:</strong>{" "}
+            <MoneyLabel value={node.properties.amount} /></span>
+        )}
+        {["award_date", "source_dataset", "source_row"].map((key) => (
+          typeof node.properties?.[key] === "string" && node.properties[key] && (
+            <span className={styles.meta} key={key}>
+              <strong>{t(`graph.edge.${key}`)}:</strong> <span>{String(node.properties[key])}</span>
+            </span>
+          )
+        ))}
+        {sourceUrl && <a className={styles.sourceLink} href={sourceUrl} target="_blank"
+          rel="noopener noreferrer">{t("graph.edge.openSource")}</a>}
+        {typeof node.properties?.file_sha256 === "string" && node.properties.file_sha256 && (
+          <details className={styles.meta} style={{ pointerEvents: "auto" }}>
+            <summary>{t("graph.edge.fileHash")}</summary>
+            <code style={{ overflowWrap: "anywhere" }}>{node.properties.file_sha256}</code>
+          </details>
+        )}
+        <span className={styles.meta}>{t("graph.edge.awardNotice")}</span>
+      </div>}
       <span className={styles.connections}>
         {node.connectionCount} {t("common.connections")}
       </span>

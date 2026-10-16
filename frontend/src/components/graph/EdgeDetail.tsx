@@ -47,7 +47,8 @@ export function EdgeDetail({ edge, onClose }: EdgeDetailProps) {
   const isRnp = ["SOCIO_DE", "REPRESENTA_A", "MIEMBRO_ORGANO_DE"].includes(edge.type)
     && typeof props.source_dataset === "string" && typeof props.file_sha256 === "string";
   const sourceUrl = safeSourceUrl(props.source_url);
-  const rnpFields = ["declared_name", "cargo", "source_dataset"] as const;
+  const rnpFields = ["declared_name", "cargo", "source_cutoff", "valid_from",
+    "source_dataset", "source_row"] as const;
   const databases = edge.properties.database
     ? [String(edge.properties.database)]
     : edge.properties.databases
