@@ -242,6 +242,7 @@ async def test_public_graph_company_filters_person_nodes(client: AsyncClient) ->
     ({"award_title": "ADQUISICION DE EQUIPOS", "award_id": "SEACE-123-1"},
      "ADQUISICION DE EQUIPOS"),
     ({"award_id": "SEACE-123-1"}, "SEACE-123-1"),
+    ({"award_title": "A" * 100, "award_id": "SEACE-123-1"}, "A" * 77 + "..."),
 ])
 async def test_provider_graph_displays_award_title_or_business_id(
     client: AsyncClient, props: dict[str, str], want: str,
@@ -257,6 +258,8 @@ async def test_provider_graph_displays_award_title_or_business_id(
         response = await client.get("/api/v1/public/graph/proveedor/20999999991")
     assert response.status_code == 200
     assert response.json()["nodes"][0]["label"] == want
+    if "award_title" in props:
+        assert response.json()["nodes"][0]["properties"]["award_title"] == props["award_title"]
 
 
 @pytest.mark.anyio
