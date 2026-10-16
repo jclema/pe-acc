@@ -85,3 +85,25 @@ def test_legacy_name_only_is_not_replaced_by_a_placeholder():
     existing = {'ruc': RUC, 'name': 'KNOWN NAME', 'source': 'sunat_ruc'}
     result = merge_provider_record(existing, {'ruc': RUC, 'legal_name': f'RUC {RUC}'}, 'sunat_ruc')
     assert result['legal_name'] == result['name'] == 'KNOWN NAME'
+
+
+def test_four_sources_converge_without_losing_declared_identity_or_hash():
+    from itertools import permutations
+
+    rows = [(SUNAT, 'sunat_ruc'), (OSCE, 'osce_sanctions'),
+            ({'ruc': RUC, 'legal_name': 'SEACE NAME', 'source_dataset': 'processes.csv',
+              'source_url': 'https://example.test/seace'}, 'seace_conosce'),
+            ({'ruc': RUC, 'name': 'RNP NAME', 'source_dataset': 'Socios.csv',
+              'file_sha256': 'a' * 64}, 'osce_rnp')]
+    snapshots = []
+    for ordered in permutations(rows):
+        current = {}
+        for row, source in list(ordered) * 2:
+            current.update(merge_provider_record(current, row, source))
+        assert current['legal_name'] == current['name'] == 'SUNAT NAME'
+        assert current['sources'] == ['osce_rnp', 'osce_sanctions', 'seace_conosce', 'sunat_ruc']
+        records = [json.loads(value) for value in current['provider_source_records']]
+        assert len(records) == 4
+        assert next(r for r in records if r['source'] == 'osce_rnp')['file_sha256'] == 'a' * 64
+        snapshots.append(current)
+    assert all(snapshot == snapshots[0] for snapshot in snapshots)

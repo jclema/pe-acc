@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -32,6 +33,7 @@ class PeSeaceConoscePipeline(Pipeline):
     ) -> None:
         super().__init__(driver, data_dir, limit=limit, chunk_size=chunk_size, **kwargs)
         self._raw_rows: pd.DataFrame = pd.DataFrame()
+        self._file_sha256 = ""
         self.entities: list[dict[str, Any]] = []
         self.providers: list[dict[str, Any]] = []
         self.processes: list[dict[str, Any]] = []
@@ -50,6 +52,8 @@ class PeSeaceConoscePipeline(Pipeline):
             logger.warning("[%s] processes.csv not found in %s", self.name, candidates)
             return
         self._raw_rows = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+        with csv_path.open("rb") as stream:
+            self._file_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
 
     def transform(self) -> None:
         entities: list[dict[str, Any]] = []
@@ -88,6 +92,8 @@ class PeSeaceConoscePipeline(Pipeline):
                 "legal_name": normalize_name(str(row.get("provider_name", ""))),
                 "trade_name": "",
                 "source": "seace_conosce",
+                "source_dataset": "processes.csv",
+                "file_sha256": self._file_sha256,
                 "source_url": source_url,
                 "extraction_date": extraction_date,
             })
@@ -147,7 +153,9 @@ class PeSeaceConoscePipeline(Pipeline):
 
         self.rows_in = len(self._raw_rows)
         self.entities = deduplicate_rows(entities, ["entity_id"])
-        self.providers = deduplicate_rows(providers, ["ruc"])
+        self.providers = deduplicate_rows(
+            providers, ["ruc", "legal_name", "source_url", "extraction_date", "source_dataset"],
+        )
         self.processes = deduplicate_rows(processes, ["process_id"])
         self.awards = deduplicate_rows(awards, ["award_id"])
         self.entity_process_rels = entity_process_rels
@@ -156,11 +164,13 @@ class PeSeaceConoscePipeline(Pipeline):
         self.rows_loaded = len(self.awards)
 
     def load(self) -> None:
-        loader = Neo4jBatchLoader(self.driver)
+        loader = Neo4jBatchLoader(
+            self.driver, batch_size=self.chunk_size, neo4j_database=self.neo4j_database,
+        )
         if self.entities:
             loader.load_nodes("Entity", self.entities, key_field="entity_id")
         if self.providers:
-            loader.load_nodes("Provider", self.providers, key_field="ruc")
+            loader.load_provider_records(self.providers, self.source_id)
         if self.processes:
             loader.load_nodes("ProcurementProcess", self.processes, key_field="process_id")
         if self.awards:
@@ -196,4 +206,3 @@ class PeSeaceConoscePipeline(Pipeline):
                 target_key="ruc",
                 properties=["source", "confidence"],
             )
-
