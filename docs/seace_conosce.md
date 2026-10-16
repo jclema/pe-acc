@@ -34,3 +34,45 @@ real; el scaffold no los infiere ni garantiza vigencia. Sin cambios de API/UI ni
 política pública. Antes de reprocesar datos reales, un operador debe respaldar y
 validar el destino. Para rollback posterior, restaurar el backup; revertir código
 no revierte datos ni autoriza borrar proveedores compartidos.
+
+## Adquisición oficial de adjudicaciones por año
+
+Verificado por HTTP el 2026-10-15: el [portal oficial](https://bi.seace.gob.pe/pentaho/api/repos/%3Apublic%3Aportal%3Adatosabiertos.html/content?userid=public&password=key)
+genera enlaces a XLSX mediante su
+[script publicado](https://bi.seace.gob.pe/pentaho/plugin/pentaho-cdf-dd/api/resources/public/portal/js/renderhtmlv2.js?userid=public&password=key).
+El [XLSX 2026 de adjudicaciones](https://conosce.osce.gob.pe/buscador/assets/67ae6c4a/reportes/adjudicaciones/2026/CONOSCE_ADJUDICACIONES2026_0.xlsx)
+respondió a HEAD (9 359 469 bytes; Last-Modified 2026-10-09). Rangos HTTP acotados
+permitieron comprobar la estructura ZIP, la referencia a `Sheet1` y sus 25 columnas
+sin descargar ni conservar filas reales. El [diccionario oficial](https://conosce.osce.gob.pe/buscador/assets/67ae6c4a/reportes/Diccionario.xlsx)
+describe los campos; el archivo usa `RUC PROVEEDOR` con espacio, aunque el
+diccionario lo representa como `RUC_PROVEEDOR`.
+
+El conector separado descarga **un XLSX anual de adjudicaciones**, con año explícito
+entre 2018 y el actual. Es descarga de archivo oficial, no API de filas. La ruta
+Pentaho que contiene `/api/` entrega HTML; no acredita una REST de contrataciones.
+No se enumeran ni descargan todos los años ni otros datasets:
+
+```bash
+cd etl
+uv run python -m bracc_etl.seace_acquisition --year 2026 --output-dir /ruta/aislada/seace
+uv run pytest tests/test_seace_acquisition.py -q
+```
+
+Límite de descarga: 32 MiB. Solo publica `snapshot-*` con XLSX y `manifest.json`
+tras comprobar longitud, ZIP/CRC, límites del contenido descomprimido, XML seguro,
+paquete/referencia de hoja, las 25 columnas observadas y filas no vacías. Cambios de
+esquema abortan; no se renombran columnas ni se adivinan contratos. El manifiesto
+conserva URL, año, bytes, SHA-256, descarga y Last-Modified; licencia `unspecified` y
+corte `null`. Año de convocatoria y fecha del servidor no prueban corte completo.
+`valid_snapshot` comprueba integridad local; no acredita autenticidad ni vigencia.
+Los fallos dejan snapshots previos intactos y no seleccionan fallback automáticamente.
+
+**No produce `processes.csv` ni carga Neo4j.** Quedan pendientes el adaptador y las
+uniones oficiales con convocatorias/proveedores, claves compuestas de ítem y
+proveedor, moneda y prorrata, consorcios y documentos extranjeros. El diccionario
+incluye personas naturales y códigos 99 para proveedores extranjeros; no deben
+pasarse sin revisión a flujos públicos. La adquisición no amplía exposición pública
+ni modifica reglas de personas. Ninguna descarga completa real se ejecutó aquí.
+Estado de carga real y del scaffold: sin cambios. Un operador debe controlar acceso,
+retención, licencia y corte de los archivos antes de cualquier carga. Para rollback
+del conector basta revertir código; los archivos adquiridos permanecen en el destino.
