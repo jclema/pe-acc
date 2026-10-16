@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { MoneyLabel } from "@/components/common/MoneyLabel";
+import { isDemoSourceUrl, safeSourceUrl } from "@/lib/sourceUrl";
 
 import styles from "./EdgeDetail.module.css";
 
@@ -21,16 +22,6 @@ function resolveId(ref: string | number | { id?: string | number; [k: string]: u
   if (typeof ref === "string") return ref;
   if (typeof ref === "number") return String(ref);
   return String(ref.id ?? "");
-}
-
-function safeSourceUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  try {
-    const url = new URL(value.trim());
-    return ["https:", "http:"].includes(url.protocol) ? url.href : null;
-  } catch {
-    return null;
-  }
 }
 
 function resolveLabel(ref: EdgeDetailProps["edge"]["source"]): string {
@@ -61,6 +52,9 @@ export function EdgeDetail({ edge, onClose }: EdgeDetailProps) {
       </button>
 
       <h3 className={styles.type}>{t(`relationship.${edge.type}`, edge.type)}</h3>
+      {isDemoSourceUrl(props.source_url) && (
+        <p className={styles.notice}>Datos de demostración; sin enlace verificable.</p>
+      )}
 
       <dl className={styles.fields}>
         <dt>{t("graph.edge.source")}</dt>
