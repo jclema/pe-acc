@@ -20,6 +20,12 @@ const baseSanctionNode = {
 };
 
 describe("NodeTooltip", () => {
+  it("keeps the business identifier when the source title is empty", () => {
+    render(<NodeTooltip x={0} y={0} node={{ id: "a", type: "award", label: "SEACE-101",
+      connectionCount: 1, properties: { award_title: "" } }} />);
+    expect(screen.getByText("SEACE-101")).toBeInTheDocument();
+  });
+
   it.each(["https://example.test/awards.xlsx#row=2", "javascript:alert(1)"])(
     "shows award evidence and only safe source links (%s)", (source_url) => {
       render(<NodeTooltip x={0} y={0} node={{

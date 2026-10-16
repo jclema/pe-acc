@@ -69,8 +69,10 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
     dataColors[node.type as DataEntityType] ?? "#5a6b60";
 
   const isSanction = node.type === "sanction";
-  const fullName = node.properties?.award_title ?? node.properties?.title
-    ?? node.properties?.legal_name ?? node.properties?.name ?? node.label;
+  const fullName = [node.properties?.award_title, node.properties?.title,
+    node.properties?.legal_name, node.properties?.name].find(
+    (value) => typeof value === "string" && value.trim(),
+  ) ?? node.label;
   const sanctionTypeRaw = typeof node.properties?.type === "string" ? node.properties.type : null;
   const sanctionType = formatSanctionType(sanctionTypeRaw);
   const sanctionReason = typeof node.properties?.reason === "string" ? node.properties.reason : null;
