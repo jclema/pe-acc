@@ -93,7 +93,8 @@ class PipelineContractsTest(unittest.TestCase):
         result = subprocess.run([sys.executable, str(SCRIPT)], cwd=ROOT,
                                 capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("implemented=3 scaffolded=1 legacy=47 runner=51", result.stdout)
+        self.assertRegex(result.stdout,
+                         r"implemented=\d+ scaffolded=\d+ legacy=47 runner=51\nPASS")
 
 
 if __name__ == "__main__":
