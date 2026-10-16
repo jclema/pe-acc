@@ -95,3 +95,48 @@ def test_snapshot_rejects_symlink_and_forged_manifest(tmp_path, monkeypatch):
     manifest["downloaded_at"] = "2999-01-01T00:00:00Z"
     (snapshot / "manifest.json").write_text(json.dumps(manifest))
     assert not acquisition.valid_snapshot(snapshot)
+
+
+def test_current_download_is_separate_from_historical_fallback(tmp_path, monkeypatch):
+    serve(monkeypatch)
+    historical = acquisition.acquire(tmp_path)
+    with pytest.raises(ValueError):
+        acquisition.acquire(tmp_path, current=True)
+    content = (FIXTURES.parent / "pe_osce_rnp_current.csv").read_text().encode("cp1252")
+
+    def handler(request):
+        if request.url.path.endswith("/attachment"):
+            return httpx.Response(200, json={"results": [{
+                "title": "conformacion_juridica.csv", "extensions": {"fileSize": len(content)},
+                "_links": {"download": "/download/current.csv"},
+                "version": {"when": "2026-10-01T14:46:51Z"},
+            }], "_links": {}})
+        return httpx.Response(200, content=content)
+
+    monkeypatch.setattr(httpx, "Client", lambda **kw: ORIGINAL_CLIENT(
+        transport=httpx.MockTransport(handler), **kw,
+    ))
+    snapshot = acquisition.acquire(tmp_path, current=True)
+    meta = json.loads((snapshot / "manifest.json").read_text())
+    assert meta["scope"] == "current_consolidated_corporate"
+    assert set(meta["files"]) == {"conformacion_juridica.csv"}
+    assert acquisition.valid_snapshot(snapshot) and acquisition.valid_snapshot(historical)
+    serve(monkeypatch, "network")
+    assert acquisition.acquire(tmp_path, current=True) == snapshot
+    (snapshot / "conformacion_juridica.csv").write_bytes(b"tampered")
+    with pytest.raises(httpx.HTTPError):
+        acquisition.acquire(tmp_path, current=True)
+
+
+def test_historical_fallback_validates_rows_after_the_first(tmp_path, monkeypatch):
+    import hashlib
+
+    serve(monkeypatch)
+    snapshot = acquisition.acquire(tmp_path)
+    path = snapshot / "Socios.csv"
+    path.write_bytes(path.read_bytes() + b"DNI|1\n")
+    meta = json.loads((snapshot / "manifest.json").read_text())
+    meta["files"][path.name].update(bytes=path.stat().st_size,
+                                   sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+    (snapshot / "manifest.json").write_text(json.dumps(meta))
+    assert not acquisition.valid_snapshot(snapshot)

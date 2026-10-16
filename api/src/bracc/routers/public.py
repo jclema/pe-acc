@@ -301,9 +301,11 @@ async def public_graph_for_provider(
                 or clean_props.get("trade_name")
                 or clean_props.get("name")
                 or clean_props.get("title")
+                or clean_props.get("award_title")
                 or clean_props.get("entity_name")
                 or clean_props.get("provider_name")
                 or clean_props.get("ruc")
+                or clean_props.get("award_id")
                 or node_id
             )
             document_id = (
@@ -315,10 +317,13 @@ async def public_graph_for_provider(
                 or clean_props.get("execution_id")
                 or clean_props.get("sanction_id")
             )
+        display_label = str(label)
+        if len(display_label) > 80:
+            display_label = display_label[:77] + "..."
         nodes.append(
             GraphNode(
                 id=node_id,
-                label=str(label),
+                label=display_label,
                 type=node_type,
                 document_id=str(document_id) if document_id else None,
                 properties=_slim_props(clean_props),

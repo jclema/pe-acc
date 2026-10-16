@@ -99,9 +99,8 @@ aún ofrece los tres adjuntos compatibles. Sus versiones informan publicación
 `2021-11-11`; eso **no** es un corte comprobado ni prueba vigencia. La página
 actualizada el 2026-10-01 destaca `conformacion_juridica.csv`, de otro esquema
 (`FECHA_CORTE`, `TIPO_DOCUMENTO`, `NUMERO_DOCUMENTO`,
-`NOMBRE_RAZONODENOMINACIONSOCIAL`, `RUC`, `TIPO_CONF_JURIDICA`, etc.). No se mapea
-ese consolidado automáticamente ni se descarga para estas pruebas. Solo se
-consultaron metadatos y cabeceras mediante rangos HTTP; sin conservar filas reales.
+`NOMBRE_RAZONODENOMINACIONSOCIAL`, `RUC`, `TIPO_CONF_JURIDICA`, etc.). La comprobación
+inicial solo consultó metadatos y cabeceras; el soporte actual se describe abajo.
 
 El conector separado usa la API de **metadatos/adjuntos** para descargar CSV;
 no es una API de filas ni convierte una lectura local en API. Requiere reconocer
@@ -112,6 +111,35 @@ cd etl
 uv run python -m bracc_etl.rnp_acquisition --historical-three-files --output-dir /ruta/aislada/rnp
 uv run pytest tests/test_rnp_acquisition.py -q
 ```
+
+## Consolidado actual: alcance corporativo
+
+`--current-consolidated` adquiere únicamente `conformacion_juridica.csv` (máximo
+256 MiB), con manifiesto, URL y SHA-256. El fallback exige el mismo alcance;
+nunca sustituye el consolidado por adjuntos históricos. La descarga no carga Neo4j.
+
+El cargador prioriza ese nombre si existe en `raw/pe/osce_rnp/`; un archivo inválido
+aborta sin recurrir a los tres históricos. Solo acepta declarantes y proveedores
+con RUC 20 de once dígitos. Omite personas, documentos extranjeros y nombres con
+bytes ANSI indefinidos; conserva el archivo original. Los tres valores publicados
+`SOCIO_ACCIONISTA_TITULAR`, `REPRESENTANTE_LEGAL`, `ORGANO_ADMINISTRACION` se mapean
+a los vínculos existentes. No se inventa cargo ni porcentaje. Cada vínculo guarda
+`source_cutoff` desde FECHA_CORTE, `valid_from` desde FECHA_INICIO_VIGENCIA y
+`source_row`, además de archivo, página y huella. No se sustituye el corte por la
+fecha de descarga. Cortes distintos conservan declaraciones distintas.
+
+Desde `etl/`, primero descargar fuera del repositorio y después copiar el CSV del
+snapshot validado al directorio de entrada elegido:
+
+```bash
+uv run python -m bracc_etl.rnp_acquisition --current-consolidated --output-dir /ruta/aislada/rnp
+uv run bracc-etl run --source pe_osce_rnp --data-dir /ruta/datos --limit 20 --neo4j-uri "$RNP_TEST_URI" --neo4j-password "$RNP_TEST_PASSWORD"
+```
+
+`--limit` acota declaraciones aceptadas, no acredita cobertura del archivo. El
+alcance corporativo deja fuera la mayor parte del consolidado. Las declaraciones
+no prueban control actual. La licencia sigue sin especificarse; una prueba en base
+aislada no cambia el estado de carga de producción del registro de fuentes.
 
 Publica un directorio `snapshot-*` solo después de validar los tres archivos,
 Windows-1252, cabeceras/filas, registros válidos, tamaño completo y SHA-256.

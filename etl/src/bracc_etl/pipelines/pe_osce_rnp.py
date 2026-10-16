@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -25,11 +26,20 @@ DOCUMENTS = {
     "DOC. NACIONAL DE IDENTIDAD": ("Person", "dni", 8),
     "REG. UNICO DE CONTRIBUYENTES": ("Provider", "ruc", 11),
 }
+CONSOLIDATED = "conformacion_juridica.csv"
+CURRENT_COLUMNS = {
+    "FECHA_CORTE", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "NOMBRE_RAZONODENOMINACIONSOCIAL",
+    "RUC", "TIPO_CONF_JURIDICA", "FECHA_INICIO_VIGENCIA", "ID_FORMA_SOCIETARIA",
+    "DE_FORMA_SOCIETARIA",
+}
+CURRENT_TYPES = {"SOCIO_ACCIONISTA_TITULAR": "SOCIO_DE", "REPRESENTANTE_LEGAL": "REPRESENTA_A",
+                 "ORGANO_ADMINISTRACION": "MIEMBRO_ORGANO_DE"}
 
 
-def read_rnp(path: Path) -> tuple[list[dict[str, str]], int]:
+def read_rnp(path: Path, *, limit: int | None = None) -> tuple[list[dict[str, str]], int]:
     """Read an ANSI export; reject identities without deleting document characters."""
-    relationship, name_column = FILES[path.name]
+    current = path.name == CONSOLIDATED
+    relationship, name_column = ("", "Nombre_RazonSocial") if current else FILES[path.name]
     required = {"Tipo_Documento", "Nro_Documento", "Ruc_Proveedor", name_column}
     if path.name == "organos.csv":
         required.add("Cargo")
@@ -37,18 +47,43 @@ def read_rnp(path: Path) -> tuple[list[dict[str, str]], int]:
         digest = hashlib.file_digest(binary, "sha256").hexdigest()
     records: list[dict[str, str]] = []
     count = 0
-    with path.open(encoding="cp1252", newline="") as stream:
+    with path.open(encoding="cp1252", errors="surrogateescape" if current else "strict",
+                   newline="") as stream:
         header = stream.readline()
         delimiter = max(("|", ","), key=header.count)
         stream.seek(0)
         reader = csv.DictReader(stream, delimiter=delimiter, strict=True)
         columns = reader.fieldnames or []
-        if not required.issubset(columns) or len(columns) != len(set(columns)):
+        expected = CURRENT_COLUMNS if current else required
+        if not expected.issubset(columns) or len(columns) != len(set(columns)):
             raise ValueError(f"{path}: missing or duplicate RNP columns")
+        if limit == 0:
+            return [], 0
         for row in reader:
             count += 1
             if None in row or any(value is None for value in row.values()):
                 raise ValueError(f"{path}:{reader.line_num}: malformed RNP row")
+            if any(re.search(r"[\udc80-\udcff]", value) for value in row.values()):
+                continue  # Undefined ANSI bytes: retain raw evidence, never invent a name.
+            evidence = {}
+            if current:
+                if row["TIPO_CONF_JURIDICA"] not in CURRENT_TYPES:
+                    raise ValueError("Unknown consolidated RNP relationship")
+                relationship = CURRENT_TYPES[row["TIPO_CONF_JURIDICA"]]
+                # Current public review scope: corporate declarations only.
+                if (row["TIPO_DOCUMENTO"] != "REG. UNICO DE CONTRIBUYENTES"
+                        or not re.fullmatch(r"20[0-9]{9}", row["NUMERO_DOCUMENTO"])):
+                    continue
+                evidence = {
+                    "source_cutoff": (datetime.strptime(row["FECHA_CORTE"], "%Y%m%d")
+                                      .date().isoformat()),
+                    "valid_from": (datetime.strptime(row["FECHA_INICIO_VIGENCIA"], "%Y%m%d")
+                                   .date().isoformat() if row["FECHA_INICIO_VIGENCIA"] else ""),
+                    "source_row": str(reader.line_num),
+                }
+                row = {"Tipo_Documento": row["TIPO_DOCUMENTO"],
+                       "Nro_Documento": row["NUMERO_DOCUMENTO"], "Ruc_Proveedor": row["RUC"],
+                       name_column: row["NOMBRE_RAZONODENOMINACIONSOCIAL"]}
             document = row["Nro_Documento"].strip()
             target = row["Ruc_Proveedor"].strip()
             name = normalize_name(row[name_column])
@@ -76,8 +111,11 @@ def read_rnp(path: Path) -> tuple[list[dict[str, str]], int]:
                     "source_dataset": path.name,
                     "source_url": SOURCE_URL,
                     "file_sha256": digest,
+                    **evidence,
                 }
             )
+            if limit is not None and len(records) >= limit:
+                break
     return records, count
 
 
@@ -94,7 +132,9 @@ class PeOsceRnpPipeline(Pipeline):
 
     def extract(self) -> None:
         directory = Path(self.data_dir) / "raw" / "pe" / "osce_rnp"
-        self.raw_files = [directory / filename for filename in FILES]
+        current = directory / CONSOLIDATED
+        self.raw_files = ([current] if current.exists()
+                          else [directory / filename for filename in FILES])
         for path in self.raw_files:
             if not path.is_file():
                 raise FileNotFoundError(path)
@@ -103,7 +143,7 @@ class PeOsceRnpPipeline(Pipeline):
         self.records = []
         self.rows_in = 0
         for path in self.raw_files:
-            rows, count = read_rnp(path)
+            rows, count = read_rnp(path, limit=self.limit if path.name == CONSOLIDATED else None)
             self.rows_in += count
             self.records.extend(rows)
         self.records = self.records[: self.limit]
@@ -111,6 +151,8 @@ class PeOsceRnpPipeline(Pipeline):
             components = [
                 row[key] for key in ("label", "key", "document", "target", "type", "cargo", "name")
             ]
+            if "source_cutoff" in row:
+                components.extend([row["source_cutoff"], row["valid_from"]])
             row["record_id"] = hashlib.sha256(json.dumps(components).encode()).hexdigest()
         self.rows_loaded = len({row["record_id"] for row in self.records})
 
@@ -143,6 +185,8 @@ class PeOsceRnpPipeline(Pipeline):
                     f"MERGE (a)-[r:{relationship} {{record_id: row.record_id}}]->(b) "
                     "SET r.source = row.source, r.source_dataset = row.source_dataset, "
                     "r.source_url = row.source_url, r.file_sha256 = row.file_sha256, "
-                    "r.declared_name = row.name, r.cargo = row.cargo",
+                    "r.declared_name = row.name, r.cargo = row.cargo, "
+                    "r.source_cutoff = row.source_cutoff, r.valid_from = row.valid_from, "
+                    "r.source_row = row.source_row",
                     rows,
                 )
