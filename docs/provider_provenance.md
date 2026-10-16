@@ -47,3 +47,52 @@ SUNAT por lotes, relaciones correctas, rollback del lote y concurrencia.
 Rollback de código no revierte cargas; respaldar y verificar destino antes de operar.
 Conservar la evidencia al volver al loader anterior requiere detener las cargas:
 el loader anterior puede sobrescribir campos escalares, aunque deja estas propiedades.
+
+## Contrato de lectura API
+
+Las consultas existentes de entidad y conexiones agregan `provider_provenance`
+solo para `Provider` (otras entidades: `null`). Sus `fields` contienen únicamente
+campos seleccionados de identidad, estado tributario y geografía del contrato ETL.
+Cada campo tiene `source`, `source_url`, `source_dataset` y `extraction_date`;
+los metadatos desconocidos quedan en `null`. No se atribuyen los demás campos a
+la fuente escalar. `sources` conserva compatibilidad y usa la lista multi-fuente
+cuando existe, sin expresar atribución por campo.
+La consulta de conexiones admite `Provider` y la relación peruana `HAS_SANCTION`;
+conserva los filtros de nodos privados y los controles de acceso existentes.
+
+`status` es `structured` para un objeto JSON de atribución, `legacy` cuando falta
+y `invalid` cuando no puede leerse. Atribuciones de forma/fuente desconocida
+quedan vacías. Demo/legacy no reconstruyen evidencia desde el historial.
+El historial y el JSON interno nunca se aplanan en `properties`, incluso en grafos.
+Los controles `PUBLIC_MODE` existentes siguen aplicándose.
+
+Solo se aceptan enlaces HTTPS de dominios oficiales peruanos (`gob.pe` y sus
+subdominios) y el tenant exacto `osce-gob-pe.atlassian.net` registrado para OSCE,
+sin credenciales ni puertos distintos de 443. Otros tenants Atlassian y los hosts
+ficticios `example.gob.pe` y sus subdominios se rechazan. El archivo se reduce al
+nombre base; el corte requiere fecha ISO completa y no se deriva de la descarga.
+Una URL admitida no acredita disponibilidad HTTP ni autenticidad individual.
+El enlace OSCE registrado conduce al catálogo de CSV; no identifica por sí solo
+el documento de cada resolución. El CSV local permite reproducir la carga.
+
+Desde el checkout API, con Docker y uv disponibles:
+```bash
+(cd api && uv sync --frozen --extra dev)
+make test-api
+(cd api && uv run --frozen ruff check src tests && uv run --frozen mypy src)
+(cd api && uv run --frozen pytest -o addopts='' tests/integration/test_entity_integration.py -q)
+make neutrality check-public-claims
+python3 scripts/check_public_privacy.py --repo-root .
+```
+Las integraciones usan Neo4j temporal y datos sintéticos; verifican conexiones,
+atribución seleccionada, historial oculto, exclusión de nodos privados y el bloqueo
+cuando el lookup público está deshabilitado. No cambian esquema, auth o rutas,
+ni acreditan una carga oficial. Los tests ordinarios no ejecutan integraciones.
+
+La revisión se organiza en #20 (ETL) → #22 (API) → #23 (interfaz). Las correcciones
+API de #24 están incorporadas en #22. Otros importadores y operación real siguen
+pendientes. Reprocesar la base existente requiere una operación aparte; los datos
+cargados antes de este contrato pueden responder `legacy`. Este trabajo no
+actualiza automáticamente el dataset ni añade filtros de vigencia.
+Rollback: revertir el bloque API; los campos ETL permanecen en Neo4j y no requieren
+migración. La interfaz consume este contrato en un PR separado.
