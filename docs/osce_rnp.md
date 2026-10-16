@@ -90,3 +90,42 @@ automáticamente sin desactivar la navegación.
 
 Un clic en un nodo fija su ficha ampliada para abrir la fuente sin mantener el cursor.
 Ciérrala con su botón o con un clic en el fondo; ocultar el nodo también la cierra.
+
+## Adquisición oficial acotada (adjuntos históricos)
+
+Comprobación HTTP del 2026-10-15: la API oficial de metadatos de Confluence
+[`child/attachment`](https://osce-gob-pe.atlassian.net/wiki/rest/api/content/106889267/child/attachment?limit=50&expand=version)
+aún ofrece los tres adjuntos compatibles. Sus versiones informan publicación
+`2021-11-11`; eso **no** es un corte comprobado ni prueba vigencia. La página
+actualizada el 2026-10-01 destaca `conformacion_juridica.csv`, de otro esquema
+(`FECHA_CORTE`, `TIPO_DOCUMENTO`, `NUMERO_DOCUMENTO`,
+`NOMBRE_RAZONODENOMINACIONSOCIAL`, `RUC`, `TIPO_CONF_JURIDICA`, etc.). No se mapea
+ese consolidado automáticamente ni se descarga para estas pruebas. Solo se
+consultaron metadatos y cabeceras mediante rangos HTTP; sin conservar filas reales.
+
+El conector separado usa la API de **metadatos/adjuntos** para descargar CSV;
+no es una API de filas ni convierte una lectura local en API. Requiere reconocer
+explícitamente el alcance histórico y no toca Neo4j:
+
+```bash
+cd etl
+uv run python -m bracc_etl.rnp_acquisition --historical-three-files --output-dir /ruta/aislada/rnp
+uv run pytest tests/test_rnp_acquisition.py -q
+```
+
+Publica un directorio `snapshot-*` solo después de validar los tres archivos,
+Windows-1252, cabeceras/filas, registros válidos, tamaño completo y SHA-256.
+Límite: 64 MiB por archivo y 96 MiB por conjunto; no admite adjuntos extra como
+sustitutos. `manifest.json` conserva URLs, tamaño, huella, fecha de descarga y
+fecha de versión si está disponible; licencia `unspecified` y corte `null`.
+Una fecha de descarga o publicación no se convierte en fecha de observación.
+Ante fallo, solo reutiliza un snapshot completo con manifiesto, huellas y CSV
+válidos; nunca mezcla archivos de ejecuciones diferentes ni usa enlaces simbólicos.
+No borra snapshots previos. El fallback se informa en el log.
+
+Para comprobar compatibilidad, las pruebas pasan los tres archivos del snapshot
+al transformador existente. El CLI de carga sigue usando el contrato local de
+arriba; el conector no promueve snapshots a producción. Un operador debe revisar
+corte, licencia y utilidad histórica antes de cualquier reprocesamiento. Queda
+pendiente adaptar y validar el consolidado actual con su diccionario de tipos y
+restricciones públicas. La disponibilidad de adjuntos históricos no cierra esa brecha.
