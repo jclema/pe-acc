@@ -8,7 +8,7 @@ from typing import Any
 FIELDS = ('legal_name', 'name', 'trade_name', 'tax_status', 'tax_condition', 'provider_type',
           'ubigeo', 'department', 'province', 'district')
 META = ('source', 'source_url', 'source_dataset', 'extraction_date', 'file_sha256')
-PRIORITY = {'sunat_ruc': 2, 'osce_sanctions': 1, 'osce_rnp': 0}
+PRIORITY = {'sunat_ruc': 3, 'osce_sanctions': 2, 'seace_conosce': 1, 'osce_rnp': 0}
 
 
 def merge_provider_record(

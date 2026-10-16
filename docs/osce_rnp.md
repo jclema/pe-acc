@@ -35,8 +35,8 @@ La carga añade declaraciones: no elimina vínculos ausentes de un archivo poste
 Los proveedores jurídicos de origen y destino añaden observaciones a `sources` y
 `provider_source_records`, con archivo, URL y SHA-256. El nombre declarado pertenece
 al origen; nunca se atribuye al proveedor destino ni se copian personas al historial
-de `Provider`. La proyección de identidad prioriza SUNAT, luego sanciones OSCE y
-finalmente RNP; `provider_field_sources` identifica la evidencia seleccionada.
+de `Provider`. La proyección de identidad prioriza SUNAT, sanciones OSCE, SEACE y
+RNP; `provider_field_sources` identifica la evidencia seleccionada.
 No se inventa una fecha de corte cuando el archivo no la informa. Repetir o invertir
 el orden de carga conserva observaciones, identidad SUNAT y vínculos de sanciones.
 Esto extiende la carga local; todavía no adquiere archivos del portal.

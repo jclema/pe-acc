@@ -34,7 +34,7 @@ def test_transform_builds_entities_processes_awards_and_providers() -> None:
     pipeline.transform()
 
     assert len(pipeline.entities) == 2
-    assert len(pipeline.providers) == 2
+    assert len(pipeline.providers) == 3  # two providers, three distinct source observations
     assert len(pipeline.processes) == 3
     assert len(pipeline.awards) == 3
 
@@ -73,3 +73,17 @@ def test_load_creates_procurement_relationships() -> None:
     assert any("MERGE (a)-[r:PUBLISHED]->(b)" in str(call) for call in run_calls)
     assert any("MERGE (a)-[r:HAS_AWARD]->(b)" in str(call) for call in run_calls)
     assert any("MERGE (a)-[r:WINNER]->(b)" in str(call) for call in run_calls)
+
+
+def test_local_extract_keeps_file_hash_for_each_provider_observation(tmp_path: Path) -> None:
+    import hashlib
+
+    content = (FIXTURES / "pe_seace_conosce_processes.csv").read_bytes()
+    raw = tmp_path / "pe/seace_conosce"
+    raw.mkdir(parents=True)
+    (raw / "processes.csv").write_bytes(content)
+    pipeline = PeSeaceConoscePipeline(MagicMock(), data_dir=str(tmp_path))
+    pipeline.extract()
+    pipeline.transform()
+    assert {r["file_sha256"] for r in pipeline.providers} == {hashlib.sha256(content).hexdigest()}
+    assert {r["source_dataset"] for r in pipeline.providers} == {"processes.csv"}
