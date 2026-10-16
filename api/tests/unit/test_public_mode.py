@@ -238,6 +238,28 @@ async def test_public_graph_company_filters_person_nodes(client: AsyncClient) ->
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("props,want", [
+    ({"award_title": "ADQUISICION DE EQUIPOS", "award_id": "SEACE-123-1"},
+     "ADQUISICION DE EQUIPOS"),
+    ({"award_id": "SEACE-123-1"}, "SEACE-123-1"),
+])
+async def test_provider_graph_displays_award_title_or_business_id(
+    client: AsyncClient, props: dict[str, str], want: str,
+) -> None:
+    with (
+        patch("bracc.routers.public.execute_query_single", new_callable=AsyncMock,
+              return_value={"p": {"ruc": "20999999991"},
+                            "entity_labels": ["Provider"], "entity_id": "p1"}),
+        patch("bracc.routers.public.execute_query", new_callable=AsyncMock,
+              return_value=[{"nodes": [_FakeNode("internal-neo4j-id", ["Award"], **props)],
+                             "relationships": [], "center_id": "p1"}]),
+    ):
+        response = await client.get("/api/v1/public/graph/proveedor/20999999991")
+    assert response.status_code == 200
+    assert response.json()["nodes"][0]["label"] == want
+
+
+@pytest.mark.anyio
 async def test_baseline_not_exposed_in_public_mode(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,

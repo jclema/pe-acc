@@ -14,6 +14,30 @@ FIXTURES = Path(__file__).parents[1] / "fixtures" / "pe_osce_rnp"
 
 
 @pytest.mark.integration
+def test_current_rnp_corporate_links_preserve_cutoff_and_exclude_people(neo4j_driver, tmp_path):
+    raw = tmp_path / "raw/pe/osce_rnp"
+    raw.mkdir(parents=True)
+    content = (FIXTURES.parent / "pe_osce_rnp_current.csv").read_text()
+    content = content.replace("20999999991", "20998888051").replace("20999999992", "20998888052")
+    (raw / "conformacion_juridica.csv").write_text(content, encoding="cp1252")
+    pipeline = PeOsceRnpPipeline(neo4j_driver, str(tmp_path))
+    pipeline.extract()
+    pipeline.transform()
+    for _ in range(2):
+        pipeline.load()
+    with neo4j_driver.session() as session:
+        rows = session.run(
+            "MATCH (a)-[r]->(p:Provider {ruc:'20998888051'}) "
+            "RETURN labels(a) AS labels, properties(r) AS r",
+        ).data()
+    assert len(rows) == 3
+    assert all(r["labels"] == ["Provider"] and r["r"]["source_cutoff"] == "2026-10-01"
+               and r["r"]["source_dataset"] == "conformacion_juridica.csv"
+               and len(r["r"]["file_sha256"]) == 64 and r["r"]["source_row"]
+               for r in rows)
+
+
+@pytest.mark.integration
 def test_rnp_preserves_providers_and_idempotent_links(neo4j_driver: Driver) -> None:
     with neo4j_driver.session() as session:
         session.run(
@@ -42,6 +66,7 @@ def test_rnp_preserves_providers_and_idempotent_links(neo4j_driver: Driver) -> N
         with neo4j_driver.session() as session:
             links = session.run(
                 "MATCH (a)-[r]->(p:Provider) WHERE r.source='osce_rnp' "
+                "AND p.ruc IN ['20999999991','20999999992'] "
                 "RETURN coalesce(a.dni,a.ruc) AS document, p.ruc AS target, "
                 "type(r) AS type, properties(r) AS props, labels(a) AS labels "
                 "ORDER BY r.record_id",

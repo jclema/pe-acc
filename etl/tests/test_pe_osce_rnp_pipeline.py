@@ -106,3 +106,54 @@ def test_runner_registration() -> None:
 
     assert PIPELINES["pe_osce_rnp"] is PeOsceRnpPipeline
     assert PeOsceRnpPipeline.source_id == "osce_rnp"
+
+
+def current_input(tmp_path: Path) -> Path:
+    path = tmp_path / "raw/pe/osce_rnp/conformacion_juridica.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fixture = FIXTURES.parent / "pe_osce_rnp_current.csv"
+    path.write_text(fixture.read_text(), encoding="cp1252")
+    return path
+
+
+def test_current_consolidated_maps_corporate_declarations_and_dates(tmp_path: Path) -> None:
+    path = current_input(tmp_path)
+    pipeline = PeOsceRnpPipeline(MagicMock(), str(tmp_path))
+    pipeline.extract()
+    pipeline.transform()
+    assert pipeline.rows_in == 4 and pipeline.rows_loaded == 3
+    assert {r["type"] for r in pipeline.records} == {
+        "SOCIO_DE", "REPRESENTA_A", "MIEMBRO_ORGANO_DE",
+    }
+    assert all(r["label"] == "Provider" and r["document"] == "20999999992"
+               and r["target"] == "20999999991" and r["name"] == "COMPANIA SINTETICA B"
+               and r["source_cutoff"] == "2026-10-01" and r["cargo"] == ""
+               and r["file_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+               for r in pipeline.records)
+    assert pipeline.records[0]["valid_from"] == "2020-01-02"
+    assert pipeline.records[1]["valid_from"] == ""
+    ids = [r["record_id"] for r in pipeline.records]
+    pipeline.transform()
+    assert ids == [r["record_id"] for r in pipeline.records]
+    path.write_bytes(path.read_bytes().replace(b"20261001", b"20261101"))
+    pipeline.transform()
+    assert set(ids).isdisjoint(r["record_id"] for r in pipeline.records)
+
+
+@pytest.mark.parametrize("old,new", [
+    (b"TIPO_CONF_JURIDICA", b"WRONG"), (b"20261001", b"20261301"),
+    (b"SOCIO_ACCIONISTA_TITULAR", b"UNKNOWN_RELATION"),
+])
+def test_current_schema_date_and_relation_changes_fail(tmp_path, old, new):
+    path = current_input(tmp_path)
+    path.write_bytes(path.read_bytes().replace(old, new))
+    with pytest.raises(ValueError):
+        read_rnp(path)
+
+
+def test_current_limit_and_undefined_ansi_bytes_do_not_invent_names(tmp_path):
+    path = current_input(tmp_path)
+    path.write_bytes(path.read_bytes().replace(b"COMPA\xd1IA", b"BAD\x81NAME", 1))
+    records, count = read_rnp(path, limit=1)
+    assert len(records) == 1 and count == 2
+    assert records[0]["type"] == "MIEMBRO_ORGANO_DE"
