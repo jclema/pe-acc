@@ -64,7 +64,7 @@ def valid_snapshot(path: Path) -> bool:
             with file.open("rb") as stream:
                 if hashlib.file_digest(stream, "sha256").hexdigest() != info["sha256"]:
                     return False
-            if not read_rnp(file, limit=1)[0]:
+            if not read_rnp(file, limit=1 if current else None)[0]:
                 return False
         return True
     except (OSError, ValueError, KeyError, TypeError, csv.Error):
