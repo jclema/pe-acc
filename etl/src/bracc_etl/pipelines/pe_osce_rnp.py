@@ -120,6 +120,13 @@ class PeOsceRnpPipeline(Pipeline):
             batch_size=self.chunk_size,
             neo4j_database=self.neo4j_database,
         )
+        providers: list[dict[str, Any]] = []
+        for row in self.records:
+            evidence = {key: row[key] for key in ("source_url", "source_dataset", "file_sha256")}
+            providers.append({"ruc": row["target"], **evidence})
+            if row["label"] == "Provider":
+                providers.append({"ruc": row["document"], "name": row["name"], **evidence})
+        loader.load_provider_records(providers, self.source_id)
         for relationship, _ in FILES.values():
             for label, key in (("Person", "dni"), ("Person", "ruc"), ("Provider", "ruc")):
                 rows = [
