@@ -190,6 +190,7 @@ const rnp = {
   properties: {
     declared_name: "ENTIDAD SINTÉTICA B", cargo: "DIRECTOR",
     source_dataset: "organos.csv", file_sha256: "a".repeat(64),
+    source_cutoff: "2026-10-01", valid_from: "2020-01-02", source_row: "5",
     source_url: "https://osce-gob-pe.atlassian.net/wiki/spaces/PNDA/pages/106889267",
   },
 };
@@ -201,6 +202,8 @@ describe("GraphCanvas RNP details", () => {
     expect(screen.getByText("PROVEEDOR SINTÉTICO A")).toBeInTheDocument();
     expect(screen.getByText("DIRECTOR")).toBeInTheDocument();
     expect(screen.getByText("organos.csv")).toBeInTheDocument();
+    expect(screen.getByText("2026-10-01")).toBeInTheDocument();
+    expect(screen.getByText("2020-01-02")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "Abrir fuente oficial" });
     expect(link).toHaveAttribute("href", rnp.properties.source_url);
     expect(link).toHaveAttribute("rel", "noopener noreferrer");

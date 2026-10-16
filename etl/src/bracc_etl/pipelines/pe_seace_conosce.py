@@ -9,6 +9,7 @@ import pandas as pd
 
 from bracc_etl.base import Pipeline
 from bracc_etl.loader import Neo4jBatchLoader
+from bracc_etl.seace_normalization import normalize_awards
 from bracc_etl.transforms import deduplicate_rows, normalize_name, parse_date, strip_document
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ class PeSeaceConoscePipeline(Pipeline):
         super().__init__(driver, data_dir, limit=limit, chunk_size=chunk_size, **kwargs)
         self._raw_rows: pd.DataFrame = pd.DataFrame()
         self._file_sha256 = ""
+        self._source_dataset = "processes.csv"
         self.entities: list[dict[str, Any]] = []
         self.providers: list[dict[str, Any]] = []
         self.processes: list[dict[str, Any]] = []
@@ -43,6 +45,12 @@ class PeSeaceConoscePipeline(Pipeline):
         self.award_provider_rels: list[dict[str, Any]] = []
 
     def extract(self) -> None:
+        official = Path(self.data_dir) / "pe/seace_conosce/official"
+        if official.exists():
+            self._raw_rows = normalize_awards(official)
+            self._file_sha256 = self._raw_rows.attrs["file_sha256"]
+            self._source_dataset = self._raw_rows.attrs["source_dataset"]
+            return
         candidates = [
             Path(self.data_dir) / "pe" / "seace_conosce" / "processes.csv",
             Path(self.data_dir) / "seace_conosce" / "processes.csv",
@@ -75,8 +83,10 @@ class PeSeaceConoscePipeline(Pipeline):
 
             extraction_date = parse_date(str(row.get("extraction_date", "")))
             source_url = str(row.get("source_url", "")).strip()
+            evidence = {"source_dataset": self._source_dataset, "file_sha256": self._file_sha256}
 
             entities.append({
+                **evidence,
                 "entity_id": entity_id,
                 "name": normalize_name(str(row.get("entity_name", ""))),
                 "government_level": str(row.get("government_level", "")).strip().lower(),
@@ -92,13 +102,14 @@ class PeSeaceConoscePipeline(Pipeline):
                 "legal_name": normalize_name(str(row.get("provider_name", ""))),
                 "trade_name": "",
                 "source": "seace_conosce",
-                "source_dataset": "processes.csv",
+                "source_dataset": self._source_dataset,
                 "file_sha256": self._file_sha256,
                 "source_url": source_url,
                 "extraction_date": extraction_date,
             })
 
             processes.append({
+                **evidence,
                 "process_id": process_id,
                 "seace_code": str(row.get("seace_code", "")).strip(),
                 "title": normalize_name(str(row.get("title", ""))),
@@ -112,6 +123,7 @@ class PeSeaceConoscePipeline(Pipeline):
             })
 
             awards.append({
+                **evidence,
                 "award_id": award_id,
                 "award_title": (
                     normalize_name(str(row.get("award_title", "")))
@@ -119,6 +131,10 @@ class PeSeaceConoscePipeline(Pipeline):
                 ),
                 "award_date": parse_date(str(row.get("award_date", ""))),
                 "amount": float(str(row.get("amount", "0")).replace(",", "") or 0),
+                "currency": str(row.get("currency", "")),
+                "original_currency": str(row.get("original_currency", "")),
+                "status": str(row.get("award_status", "")),
+                "source_row": str(row.get("source_row", "")),
                 "provider_ruc": provider_ruc,
                 "source": "seace_conosce",
                 "source_url": source_url,
@@ -151,7 +167,7 @@ class PeSeaceConoscePipeline(Pipeline):
             process_award_rels = process_award_rels[: self.limit]
             award_provider_rels = award_provider_rels[: self.limit]
 
-        self.rows_in = len(self._raw_rows)
+        self.rows_in = int(self._raw_rows.attrs.get("source_rows", len(self._raw_rows)))
         self.entities = deduplicate_rows(entities, ["entity_id"])
         self.providers = deduplicate_rows(
             providers, ["ruc", "legal_name", "source_url", "extraction_date", "source_dataset"],

@@ -20,18 +20,30 @@ HEADER = [
 NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 
 
-def workbook(failure=""):
+def workbook(failure="", rows=None):
     stream = io.BytesIO()
     header = HEADER.copy()
     if failure == "schema":
         header[19] = "WRONG_RUC"
     if failure == "duplicate":
         header[-1] = header[0]
-    strings = "".join(f"<si><t>{value}</t></si>" for value in header)
+    from xml.sax.saxutils import escape
+    values = header + [value for row in (rows or []) for value in row.values()]
+    strings = "".join(f"<si><t>{escape(value)}</t></si>" for value in values)
     if failure == "shared_xml":
         strings += "<broken>"
     cells = "".join(f'<c t="s"><v>{i}</v></c>' for i in range(len(header)))
     body = '<row r="2"><c><v>20999999991</v></c></row>'
+    if rows is not None:
+        body = ""
+        for number, row in enumerate(rows, 2):
+            cells_for_row = "".join(
+                (f'<c r="{chr(65+i)}{number}"><v>{row[key]}</v></c>'
+                 if key == "MONTO_ADJUDICADO_ITEM_SOLES" and row[key].isdigit()
+                 else f'<c r="{chr(65+i)}{number}" t="s"><v>{values.index(row[key])}</v></c>')
+                for i, key in enumerate(header) if row.get(key)
+            )
+            body += f'<row r="{number}">{cells_for_row}</row>'
     if failure in ('xml', 'empty'):
         body = '<broken>' if failure == 'xml' else ''
     with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as z:
@@ -119,3 +131,87 @@ def test_size_cap_and_snapshot_metadata_guards(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="size"):
         acquisition.acquire(tmp_path, 2026)
     assert {p.name for p in tmp_path.iterdir()} == {snapshot.name, link.name}
+
+
+def official_input(tmp_path, monkeypatch, mutate=None):
+    import csv
+    from pathlib import Path
+
+    with (Path(__file__).parent / "fixtures/pe_seace_official_rows.csv").open() as stream:
+        rows = list(csv.DictReader(stream))
+    if mutate:
+        mutate(rows)
+    serve(monkeypatch, workbook(rows=rows))
+    snapshot = acquisition.acquire(tmp_path, 2026)
+    destination = tmp_path / "pe/seace_conosce/official"
+    destination.parent.mkdir(parents=True)
+    snapshot.rename(destination)
+    return destination
+
+
+def test_official_workbook_loads_distinct_items_with_source_rows_and_pen(tmp_path, monkeypatch):
+    from unittest.mock import MagicMock
+
+    from bracc_etl.pipelines.pe_seace_conosce import PeSeaceConoscePipeline
+
+    path = official_input(tmp_path, monkeypatch)
+    pipeline = PeSeaceConoscePipeline(MagicMock(), str(tmp_path))
+    pipeline.extract()
+    pipeline.transform()
+    assert pipeline.rows_in == 7 and pipeline.rows_loaded == 2
+    assert {r["ruc"] for r in pipeline.providers} == {"20999999991", "20999999992"}
+    assert [r["award_id"] for r in pipeline.awards] == [
+        "SEACE-101-ITEM-1-RUC-20999999991", "SEACE-101-ITEM-2-RUC-20999999992",
+    ]
+    assert [r["amount"] for r in pipeline.awards] == [100, 200]
+    assert pipeline.awards[1]["currency"] == "PEN"
+    assert pipeline.awards[1]["original_currency"] == "Dólar Norteamericano"
+    assert pipeline.awards[0]["source_row"] == "2"
+    assert pipeline.awards[0]["award_title"] == "EQUIPOS FICTICIOS"
+    assert pipeline.entities[0]["entity_id"] == "001234"
+    assert pipeline.processes[0]["call_date"] == "2026-06-01"
+    assert all(r["file_sha256"] == json.loads((path / "manifest.json").read_text())["sha256"]
+               and r["source_dataset"] == "CONOSCE_ADJUDICACIONES2026_0.xlsx"
+               for r in pipeline.providers)
+    assert pipeline.providers[0]["source_url"].endswith("#row=2")
+    limited = PeSeaceConoscePipeline(MagicMock(), str(tmp_path), limit=1)
+    limited.extract()
+    limited.transform()
+    assert limited.rows_loaded == 1 and limited.awards == pipeline.awards[:1]
+
+
+@pytest.mark.parametrize("failure", ["conflict", "amount", "date", "tampered", "overflow"])
+def test_ambiguous_or_invalid_official_input_never_falls_back(tmp_path, monkeypatch, failure):
+    from unittest.mock import MagicMock
+
+    from bracc_etl.pipelines.pe_seace_conosce import PeSeaceConoscePipeline
+
+    def mutate(rows):
+        if failure == "conflict":
+            rows.append(rows[0] | {"MONTO_ADJUDICADO_ITEM_SOLES": "999"})
+        elif failure == "overflow":
+            rows[0]["MONTO_ADJUDICADO_ITEM_SOLES"] = "1e309"
+        elif failure in ("amount", "date"):
+            rows[0]["MONTO_ADJUDICADO_ITEM_SOLES" if failure == "amount"
+                    else "FECHA_BUENAPRO"] = "NaN" if failure == "amount" else "31/02/2026"
+    path = official_input(tmp_path, monkeypatch, mutate)
+    if failure == "tampered":
+        (path / "CONOSCE_ADJUDICACIONES2026_0.xlsx").write_bytes(b"changed")
+    (path.parent / "processes.csv").write_text("entity_id\nlegacy\n")
+    pipeline = PeSeaceConoscePipeline(MagicMock(), str(tmp_path))
+    with pytest.raises(ValueError):
+        pipeline.extract()
+
+
+def test_limit_does_not_hide_later_winners_for_the_same_item(tmp_path, monkeypatch):
+    from unittest.mock import MagicMock
+
+    from bracc_etl.pipelines.pe_seace_conosce import PeSeaceConoscePipeline
+
+    official_input(tmp_path, monkeypatch, lambda rows: rows.append(
+        rows[0] | {"RUC PROVEEDOR": "20999999992", "PROVEEDOR": "PROVEEDOR FICTICIO B"},
+    ))
+    pipeline = PeSeaceConoscePipeline(MagicMock(), str(tmp_path), limit=1)
+    pipeline.extract()
+    pipeline.transform()
+    assert [r["award_id"] for r in pipeline.awards] == ["SEACE-101-ITEM-2-RUC-20999999992"]

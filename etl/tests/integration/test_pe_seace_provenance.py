@@ -10,6 +10,34 @@ from bracc_etl.pipelines.pe_sunat_ruc import PeSunatRucPipeline
 
 
 @pytest.mark.integration
+def test_official_awards_reach_graph_without_duplicate_item_amounts(
+    neo4j_driver, tmp_path, monkeypatch,
+):
+    from tests.test_seace_acquisition import official_input
+
+    def mutate(rows):
+        for row in rows:
+            row["CODIGOCONVOCATORIA"] = "900001"
+    official_input(tmp_path, monkeypatch, mutate)
+    pipeline = PeSeaceConoscePipeline(neo4j_driver, str(tmp_path))
+    pipeline.extract()
+    pipeline.transform()
+    for _ in range(2):
+        pipeline.load()
+    with neo4j_driver.session() as session:
+        rows = session.run(
+            "MATCH (:Entity)-[:PUBLISHED]->(:ProcurementProcess {process_id:'SEACE-900001'})"
+            "-[:HAS_AWARD]->(a:Award)-[:WINNER]->(p:Provider) "
+            "RETURN a.amount AS amount, a.currency AS currency, a.source_row AS row, "
+            "p.ruc AS ruc ORDER BY row",
+        ).data()
+    assert rows == [
+        {"amount": 100, "currency": "PEN", "row": "2", "ruc": "20999999991"},
+        {"amount": 200, "currency": "PEN", "row": "3", "ruc": "20999999992"},
+    ]
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("reverse", [False, True])
 def test_seace_keeps_identity_all_observations_and_procurement_links(neo4j_driver, reverse):
     seace = PeSeaceConoscePipeline(neo4j_driver, chunk_size=1)

@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { dataColors, type DataEntityType } from "@/styles/tokens";
+import { MoneyLabel } from "@/components/common/MoneyLabel";
 
 import styles from "./NodeTooltip.module.css";
 
@@ -68,6 +69,10 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
     dataColors[node.type as DataEntityType] ?? "#5a6b60";
 
   const isSanction = node.type === "sanction";
+  const fullName = [node.properties?.award_title, node.properties?.title,
+    node.properties?.legal_name, node.properties?.name].find(
+    (value) => typeof value === "string" && value.trim(),
+  ) ?? node.label;
   const sanctionTypeRaw = typeof node.properties?.type === "string" ? node.properties.type : null;
   const sanctionType = formatSanctionType(sanctionTypeRaw);
   const sanctionReason = typeof node.properties?.reason === "string" ? node.properties.reason : null;
@@ -100,7 +105,7 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
           {t(`entity.${node.type}`, node.type)}
         </span>
       </div>
-      <span className={styles.name}>{node.label}</span>
+      <span className={styles.name}>{typeof fullName === "string" ? fullName : node.label}</span>
       {!isSanction && node.document_id && (
         <span className={styles.document}>{node.document_id}</span>
       )}
@@ -130,6 +135,28 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
           )}
         </div>
       )}
+      {node.type === "award" && <div className={styles.summary}>
+        {node.properties?.currency === "PEN" && typeof node.properties.amount === "number" && (
+          <span className={styles.meta}><strong>{t("graph.edge.awardAmount")}:</strong>{" "}
+            <MoneyLabel value={node.properties.amount} /></span>
+        )}
+        {["award_date", "source_dataset", "source_row"].map((key) => (
+          typeof node.properties?.[key] === "string" && node.properties[key] && (
+            <span className={styles.meta} key={key}>
+              <strong>{t(`graph.edge.${key}`)}:</strong> <span>{String(node.properties[key])}</span>
+            </span>
+          )
+        ))}
+        {sourceUrl && <a className={styles.sourceLink} href={sourceUrl} target="_blank"
+          rel="noopener noreferrer">{t("graph.edge.openSource")}</a>}
+        {typeof node.properties?.file_sha256 === "string" && node.properties.file_sha256 && (
+          <details className={styles.meta} style={{ pointerEvents: "auto" }}>
+            <summary>{t("graph.edge.fileHash")}</summary>
+            <code style={{ overflowWrap: "anywhere" }}>{node.properties.file_sha256}</code>
+          </details>
+        )}
+        <span className={styles.meta}>{t("graph.edge.awardNotice")}</span>
+      </div>}
       <span className={styles.connections}>
         {node.connectionCount} {t("common.connections")}
       </span>
