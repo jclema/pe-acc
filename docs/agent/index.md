@@ -16,6 +16,7 @@ This directory is the Codex-facing system of record for working in PE-ACC.
 | Public boundary | `docs/public_scope.md` |
 | Public endpoint behavior | `docs/release/public_endpoint_matrix.md` |
 | Peruvian source registry | `docs/source_registry_pe_v1.csv` |
+| Provider source preservation | `docs/provider_provenance.md` |
 
 ## Operating Principle
 

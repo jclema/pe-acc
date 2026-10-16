@@ -316,7 +316,7 @@ class PeOsceSanctionsPipeline(Pipeline):
     def load(self) -> None:
         loader = Neo4jBatchLoader(self.driver, batch_size=min(self.chunk_size, 20_000))
         if self.providers:
-            loader.load_nodes("Provider", self.providers, key_field="ruc")
+            loader.load_provider_records(self.providers, "osce_sanctions")
         if self.sanctions:
             loader.load_nodes("Sanction", self.sanctions, key_field="sanction_id")
         if self.provider_sanctions:
@@ -482,6 +482,7 @@ class PeOsceSanctionsPipeline(Pipeline):
             "trade_name": "",
             "source": "osce_sanctions",
             "source_url": source_url,
+            "source_dataset": source_file,
             "extraction_date": extraction_date,
         }
 

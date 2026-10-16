@@ -101,7 +101,7 @@ class PeSunatRucPipeline(Pipeline):
     def load(self) -> None:
         if self.providers:
             loader = Neo4jBatchLoader(self.driver, batch_size=min(self.chunk_size, 20_000))
-            loader.load_nodes("Provider", self.providers, key_field="ruc")
+            loader.load_provider_records(self.providers, "sunat_ruc")
             return
 
         if self.normalized_csv_path is None or not self.normalized_csv_path.exists():
@@ -115,7 +115,7 @@ class PeSunatRucPipeline(Pipeline):
             chunksize=self.chunk_size,
         ):
             rows = chunk.to_dict(orient="records")
-            loader.load_nodes("Provider", rows, key_field="ruc")
+            loader.load_provider_records(rows, "sunat_ruc")
 
     def _normalize_provider_row(self, raw_row: dict[str, Any]) -> dict[str, Any] | None:
         raw_ruc = self._first_value(raw_row, "ruc", "RUC")

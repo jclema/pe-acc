@@ -52,6 +52,30 @@ Sem isso, o passo `gh pr review --approve` pode falhar.
 4. **Approve + merge**
    - só com kill switch ativo (`CLAUDE_AUTOMERGE_ENABLED=true`)
    - aprovação formal + squash merge
+
+## Preparação e revisão humana de PRs
+
+Toda PR deve executar os checks aplicáveis de `docs/agent/quality-gates.md` e
+seguir `docs/agent/review-checklist.md`, com resultados e omissões explícitos.
+Confira também scanner/preflight com título, descrição, comentários e diff atuais;
+a coleta de contexto está em `Run preflight policy` no workflow. Registre SHA,
+base real, arquivos, adições + remoções e razões de bloqueio na descrição.
+O limite atual é 12 arquivos/400 linhas por PR contra sua própria base.
+
+A allowlist define o que o bot pode aprovar automaticamente. Arquivos fora dela
+exigem revisão humana; não se amplia a política para apresentar CI como aprovação.
+Alertas do scanner devem ser analisados e a decisão documentada pelo revisor.
+Um job verde só confirma que o comando executou: leia `eligible` e `reasons`.
+Não apresente etapas omitidas como executadas nem CI verde como aprovação do bot.
+
+Com merge automático desativado, a aprovação e integração são humanas. Os checks
+de qualidade continuam aplicáveis. Este procedimento não altera permissões,
+proteção de branches, política, scanner ou ativação de Claude/automerge.
+
+Correções de trabalho ainda pendente devem atualizar a PR correspondente.
+Numa pilha, revise as dependências por ordem; após cada integração, atualize a
+base e valide novamente o diff. O Governor remoto só atende PRs com base em main.
+
 ## Kill switch e rollback
 
 ### Kill switch imediato

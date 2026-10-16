@@ -143,6 +143,8 @@ def test_load_creates_provider_nodes() -> None:
     pipeline = _make_pipeline()
     _load_fixture_data(pipeline)
     pipeline.transform()
+    session = pipeline.driver.session.return_value.__enter__.return_value
+    session.execute_write.side_effect = lambda callback, batch: callback(session, batch)
     pipeline.load()
 
     session_mock = pipeline.driver.session.return_value.__enter__.return_value
