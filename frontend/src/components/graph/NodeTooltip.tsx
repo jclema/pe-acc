@@ -69,6 +69,8 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
     dataColors[node.type as DataEntityType] ?? "#5a6b60";
 
   const isSanction = node.type === "sanction";
+  const fullName = node.properties?.award_title ?? node.properties?.title
+    ?? node.properties?.legal_name ?? node.properties?.name ?? node.label;
   const sanctionTypeRaw = typeof node.properties?.type === "string" ? node.properties.type : null;
   const sanctionType = formatSanctionType(sanctionTypeRaw);
   const sanctionReason = typeof node.properties?.reason === "string" ? node.properties.reason : null;
@@ -101,7 +103,7 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
           {t(`entity.${node.type}`, node.type)}
         </span>
       </div>
-      <span className={styles.name}>{node.label}</span>
+      <span className={styles.name}>{typeof fullName === "string" ? fullName : node.label}</span>
       {!isSanction && node.document_id && (
         <span className={styles.document}>{node.document_id}</span>
       )}
