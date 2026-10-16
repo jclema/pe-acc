@@ -25,6 +25,7 @@ Use this before opening or updating a PR.
 ## Verification
 
 - [ ] Minimum relevant gate ran and passed.
+- [ ] Governor scanner/preflight was checked on the actual PR context; SHA, base, size and blockers are reported separately from CI (see `docs/ai-pr-governor.md`).
 - [ ] Broader gate ran for cross-stack changes.
 - [ ] Skipped checks are listed with reason.
 - [ ] Manual MVP path was tested for demo-impacting changes.
