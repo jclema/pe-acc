@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { dataColors, type DataEntityType } from "@/styles/tokens";
+import { isDemoSourceUrl, safeSourceUrl } from "@/lib/sourceUrl";
 
 import styles from "./NodeTooltip.module.css";
 
@@ -41,22 +42,11 @@ function formatSourceLabel(value: string | null): string | null {
     osce_sanctions: "OSCE - Proveedores sancionados",
     OSCE_TCP: "OSCE - Tribunal de Contrataciones",
     PODER_JUDICIAL: "Poder Judicial",
+    sunat_ruc: "SUNAT - Padron RUC",
     pe_sunat_ruc: "SUNAT - Padron RUC",
   };
 
   return labels[value] ?? value.replaceAll("_", " ");
-}
-
-function safeSourceUrl(value: unknown): string | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-
-  const candidate = value.trim();
-  try {
-    const parsed = new URL(candidate);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? candidate : null;
-  } catch {
-    return null;
-  }
 }
 
 function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
@@ -101,15 +91,18 @@ function NodeTooltipInner({ node, x, y, onClose }: NodeTooltipProps) {
         </span>
       </div>
       <span className={styles.name}>{node.label}</span>
+      {isDemoSourceUrl(node.properties?.source_url) && (
+        <span className={styles.meta}>Datos de demostración; sin enlace verificable.</span>
+      )}
       {!isSanction && node.document_id && (
         <span className={styles.document}>{node.document_id}</span>
       )}
-      {isSanction && (
+      {(isSanction || node.type === "provider") && (
         <div className={styles.summary}>
-          {sanctionType && <span className={styles.meta}><strong>Tipo:</strong> {sanctionType}</span>}
-          {sanctionReason && <span className={styles.meta}><strong>Detalle:</strong> {sanctionReason}</span>}
-          {resolution && <span className={styles.meta}><strong>Resolución:</strong> {resolution}</span>}
-          {validity && <span className={styles.meta}><strong>Vigencia:</strong> {validity}</span>}
+          {isSanction && sanctionType && <span className={styles.meta}><strong>Tipo:</strong> {sanctionType}</span>}
+          {isSanction && sanctionReason && <span className={styles.meta}><strong>Detalle:</strong> {sanctionReason}</span>}
+          {isSanction && resolution && <span className={styles.meta}><strong>Resolución:</strong> {resolution}</span>}
+          {isSanction && validity && <span className={styles.meta}><strong>Vigencia:</strong> {validity}</span>}
           {sanctionSourceLabel && (
             <span className={styles.meta}>
               <strong>Fuente:</strong>{" "}

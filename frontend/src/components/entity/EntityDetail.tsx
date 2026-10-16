@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { type EntityDetail as EntityDetailData, getEntity, getEntityByElementId } from "@/api/client";
 import { SourceBadge } from "@/components/common/SourceBadge";
 import { type EntityType, entityColors } from "@/styles/tokens";
+import { safeSourceUrl } from "@/lib/sourceUrl";
 
 import styles from "./EntityDetail.module.css";
 
@@ -88,7 +89,8 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
       ["Motivo", entity.properties.reason],
       ["Fuente URL", entity.properties.source_url],
       ["Extraccion", entity.properties.extraction_date],
-    ].filter(([, value]) => value != null && value !== "")
+    ].filter(([key, value]) => value != null && value !== ""
+      && !(entity.type === "provider" && ["Fuente URL", "Extraccion"].includes(String(key))))
     : [];
 
   const sanctionHighlights = entity && entity.type === "sanction"
@@ -108,9 +110,14 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
         "status", "tax_status", "tax_condition", "government_level", "sector", "selection_method",
         "call_date", "award_date", "date_start", "date_end", "ubigeo", "amount", "value",
         "reason", "source_url", "extraction_date",
+        "provider_source_records", "provider_field_sources",
       ].includes(key),
-    )
+    ).filter(([key]) => !(entity.type === "provider" && ["sources", "source_dataset"].includes(key)))
     : [];
+
+  const attribution = entity?.type === "provider" && entity.provider_provenance?.status === "structured"
+    ? entity.provider_provenance.fields.legal_name ?? entity.provider_provenance.fields.name : null;
+  const sourceUrl = safeSourceUrl(attribution?.source_url);
 
   return (
     <div className={styles.panel}>
@@ -204,9 +211,11 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
           {entity.sources.length > 0 && (
             <div className={styles.sources}>
               <span className={styles.sourcesLabel}>{t("common.source")}:</span>
-              {entity.sources.map((s) => (
-                <SourceBadge key={s.database} source={s.database} />
-              ))}
+              {entity.sources.map((s) => sourceUrl && s.database === attribution?.source ? (
+                <a key={s.database} href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                  <SourceBadge source={s.database} />
+                </a>
+              ) : <SourceBadge key={s.database} source={s.database} />)}
             </div>
           )}
         </div>
